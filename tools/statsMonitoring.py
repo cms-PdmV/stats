@@ -46,7 +46,7 @@ from phedex import phedex,runningSites,custodials,atT2,atT3
 # Collect all the requests which are in one of these stati which allow for 
 priority_changable_stati=['new','assignment-approved']
 #skippable_stati=[]
-skippable_stati=["rejected", "aborted","failed","rejected-archived","aborted-archived","failed-archived"]
+skippable_stati=["rejected", "aborted", "failed", "rejected-archived", "aborted-archived", "failed-archived", "aborted-completed"]
 #complete_stati=["announced","closed-out","completed","rejected", "aborted","failed"]
 complete_stati=["announced","rejected", "aborted","failed","normal-archived","aborted-archived","failed-archived"]
 
@@ -1033,7 +1033,7 @@ def parallel_test(arguments,force=False):
       if 'pdmv_expected_events' in pdmv_request_dict and pdmv_request_dict['pdmv_expected_events']==-1:        skewed=True
       if pdmv_request_dict['pdmv_status_in_DAS']=='?': skewed=True
       if pdmv_request_dict['pdmv_dataset_name']=='?' : skewed=True
-      if pdmv_request_dict['pdmv_dataset_name']=='None Yet' and req["status"] in priority_changable_stati:      skewed=True
+      if pdmv_request_dict['pdmv_dataset_name']=='None Yet' and req["status"] not in priority_changable_stati:      skewed=True
       if pdmv_request_dict['pdmv_evts_in_DAS']<0 : skewed=True
       if pdmv_request_dict['pdmv_evts_in_DAS']==0 and req["status"] in ['announced']: skewed=True
       if pdmv_request_dict['pdmv_status_in_DAS'] in [None,'PRODUCTION'] and req["status"] in ['announced','normal-archived']: skewed=True
@@ -1288,11 +1288,17 @@ def parallel_test(arguments,force=False):
     dataset_list=[]
     if 'pdmv_dataset_name' in pdmv_request_dict:
       dataset_name=pdmv_request_dict["pdmv_dataset_name"]
+    if 'pdmv_dataset_list' in pdmv_request_dict:
+      dataset_list=pdmv_request_dict['pdmv_dataset_list']
+
       #print "Already know as",dataset_name
     makedsnquery=False
     if (not 'pdmv_dataset_name' in pdmv_request_dict):
       makedsnquery=True
     if 'pdmv_dataset_name' in pdmv_request_dict and (pdmv_request_dict["pdmv_dataset_name"] in ['?','None Yet'] or 'None-' in pdmv_request_dict["pdmv_dataset_name"] or '24Aug2012' in pdmv_request_dict["pdmv_dataset_name"]):
+      makedsnquery=True
+
+    if 'pdmv_dataset_list' in pdmv_request_dict and not pdmv_request_dict['pdmv_dataset_list']:
       makedsnquery=True
 
     if force:

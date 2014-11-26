@@ -223,8 +223,6 @@ def updateOne(docid,req_list):
         return False
 
 def updateOneIt(arguments):
-    print "###DEBUG###", arguments[0]
-    #return 
     docid,req_list = arguments
     return updateOne(docid,req_list)
     
@@ -444,7 +442,6 @@ def main_do( options ):
         repeated_req_list = itertools.repeat( req_list , len(docs) )
         print "Dispaching",len(docs),"requests to ",str(nproc),"processes..."
         pool = multiprocessing.Pool(nproc)
-        print "##DEBUG###\n %s \n\n%s\n###DEBUG###"%(docs, repeated_req_list)
         results=pool.map( updateOneIt, itertools.izip( docs, repeated_req_list ) )
 
         print "End dispatching!"
