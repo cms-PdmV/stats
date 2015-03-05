@@ -1253,6 +1253,13 @@ def parallel_test(arguments,force=False):
     else:
       prep_id='No-Prepid-Found'
     #prep_id=get_prep_id(req)
+    if 'RequestName' in dict_from_workload['request']['schema']:
+      if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_HIG-Summer12DR53X-02171_00353_v0__141218_204531_2518':
+        prep_id = 'HIG-Summer12DR53X-02171'
+      if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_TOP-Summer12DR53X-00276_00354_v0__141218_204512_1227':
+        prep_id = 'TOP-Summer12DR53X-00276'
+      if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_TOP-Summer12DR53X-00275_00355_v0__141218_204521_7100':
+        prep_id = 'TOP-Summer12DR53X-00275'
     pdmv_request_dict["pdmv_prep_id"]=prep_id
     campaign=get_campaign_from_prepid(prep_id)
     pdmv_request_dict["pdmv_campaign"]=campaign    
