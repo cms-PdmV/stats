@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from couchDB import Interface
 import json
 import pprint
 import multiprocessing
@@ -11,6 +10,8 @@ import time
 import traceback
 import os
 import sys
+
+from couchDB import Interface
 
 FORCE=False
 
@@ -127,7 +128,6 @@ def compare_dictionaries(dict1, dict2):
      if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
          return False
 
-
      try:
          dicts_are_equal = True
          for key in dict1.keys():
@@ -149,8 +149,6 @@ def updateOne(docid,req_list):
         return False
     
     updatedDoc=copy.deepcopy(thisDoc)
-    #print "before update"
-    #pprint.pprint(thisDoc)
     if not len(match_req_list):
         ## when there is a fake requests in stats.
         if docid.startswith('fake_'):
@@ -163,8 +161,6 @@ def updateOne(docid,req_list):
     from statsMonitoring import parallel_test
     global FORCE
     updatedDoc=parallel_test( [req,[updatedDoc]] ,force=FORCE)
-    #print "updated"
-    #pprint.pprint(updatedDoc)
     if updatedDoc=={}:
         print "updating",docid,"returned an empty dict"
         return False
@@ -173,7 +169,6 @@ def updateOne(docid,req_list):
         pprint.pprint(thisDoc)
         statsCouch.delete_file_info(docid,thisDoc['_rev'])
         return False
-    #if pprint.pformat(updatedDoc)!=pprint.pformat(thisDoc):
     if worthTheUpdate(updatedDoc,thisDoc):
         to_get=['pdmv_monitor_time','pdmv_evts_in_DAS','pdmv_open_evts_in_DAS','pdmv_dataset_statuses']
         if 'pdvm_monitor_history' in updatedDoc:
@@ -207,11 +202,8 @@ def updateOne(docid,req_list):
             if not compare_dictionaries(old_history, new_history): # it is worth to fill history
                 updatedDoc['pdmv_monitor_history'].insert(0, rev)
 
-        
         try:
             statsCouch.update_file(docid,json.dumps(updatedDoc))
-            #pprint.pprint(updatedDoc)
-            #print updatedDoc['pdmv_at_T2']
             print docid,"something has changed"
             return docid
         except:
@@ -244,9 +236,6 @@ def dumpSome(docids,limit):
             dump[-1].pop('_rev')
         except:
             pass
-        #dump.append( statsCouch.get_file_info( docid) )
-        #dump[-1].pop('_id')
-        #dump[-1].pop('_rev')
     return dump
 
 docs=[]
@@ -317,7 +306,6 @@ def main_do( options ):
 
     ## get from stats couch the list of requests
     print "Getting all stats ..."
-    #allDocs=statsCouch.get_all_files()
     allDocs = statsCouch.get_view('all')
     docs = [doc['id'] for doc in allDocs['rows']]
     #remove the _design/stats

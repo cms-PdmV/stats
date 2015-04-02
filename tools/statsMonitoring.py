@@ -45,9 +45,7 @@ from phedex import phedex,runningSites,custodials,atT2,atT3
 
 # Collect all the requests which are in one of these stati which allow for 
 priority_changable_stati=['new','assignment-approved']
-#skippable_stati=[]
 skippable_stati=["rejected", "aborted", "failed", "rejected-archived", "aborted-archived", "failed-archived", "aborted-completed"]
-#complete_stati=["announced","closed-out","completed","rejected", "aborted","failed"]
 complete_stati=["announced","rejected", "aborted","failed","normal-archived","aborted-archived","failed-archived"]
 
 # Types of requests
@@ -183,18 +181,6 @@ def get_requests_list_old(pattern=""):
 
 #------------------------------------------------------------------------------- 
 
-def get_req_extras(req):
-  opener=urllib2.build_opener(X509CertOpen())  
-  req_name=req["request_name"]
-  url="%s%s"%(couch_address,req_name)  
-  datareq = urllib2.Request(url)  
-  datareq.add_header('authenticated_wget', "The ultimate wgetter")  
-  #print "Asking for extras %s" %url
-  req_xtras_str=opener.open(datareq).read()  
-  return eval_wma_string(req_xtras_str)
-
-#------------------------------------------------------------------------------- 
-
 def get_dataset_name(reqname):
   #print "getting dataset name for %s" % reqname
   opener=urllib2.build_opener(X509CertOpen())  
@@ -250,42 +236,7 @@ def get_dataset_name(reqname):
     dataset='None Yet'
   return dataset,dataset_list
 
-  """
-  def compareTier(t1, t2):
-    tierPriority={'/AOD':1, #/AOD & /AODSIM
-                  '-RECO' :2, #/RECO and /GEN*-RECO
-                  '/DQM' : 3,
-                  '/RAW-RECO' : 4,
-                  '/USER' : 5,
-                  '/ALCARECO' : 6}
-
-  for dset in sorted(dataset_list): # this way the GEN-SIM-RECO will be after AOD and be picked up
-    if 'DQM' in dset:
-      apossibleChoice=dset
-      continue
-    if 'USER' in dset:
-      apossibleChoice=dset
-      continue
-    if 'RAW-RECO' in dset or 'USER' in dset:
-      apossibleChoice=dset
-      continue
-    if 'ALCARECO' in dset:
-      apossibleChoice=dset
-      continue
-    
-    dataset=dset
-    if 'None-None' in dataset or 'None-' in dataset:
-      dataset='None Yet'
-  #and fallback to something that looks possible
-  if not dataset and apossibleChoice:
-    dataset=apossibleChoice
-  return dataset
-  """
-  
-#-------------------------------------------------------------------------------
-# Thanks to Jean-Roch
-
-def configsFromWorkload( workload ):
+def configsFromWorkload(workload):
   if not 'request' in workload:
     return []
   if not 'schema' in workload['request']:
@@ -307,16 +258,16 @@ def configsFromWorkload( workload ):
 
   return res
 
-def get_expected_events_by_output( request_name ):
+def get_expected_events_by_output(request_name):
   try:
-    return get_expected_events_by_output_( request_name )
+    return get_expected_events_by_output_(request_name)
   except:
     print "something went wrong in estimating the expected by output. no breaking the update though"
     import traceback
     print traceback.format_exc()
     return {}
 
-def get_expected_events_by_output_( request_name ):
+def get_expected_events_by_output_(request_name):
   
   def get_item( i, d ):
     if type(d)!=dict: 
@@ -417,32 +368,6 @@ def get_expected_events_by_output_( request_name ):
       expected_per_dataset[d] = task[expectedEvents]
       
   return expected_per_dataset
-
-def get_expected_events(request_name):
-    workload_info=generic_get(request_detail_address+request_name, False)
-    #import os
-    def getfield(line):
-        line=line.replace("<br/>","").replace('\n','').replace(' ','')
-        return line.split("=")[-1]
-
-    filter_eff=1.
-    rne=None
-    ids=[]
-    bwl=[]
-    rwl=[]
-    for line in workload_info.split('\n'):
-        if 'request.schema.RequestNumEvents' in line or 'request.schema.RequestSizeEvents' in line:
-            rne=eval(getfield(line)) # int or None
-        if 'request.schema.InputDatasets' in line:
-            ids=eval(getfield(line)) # list
-        if 'request.schema.BlockWhitelist' in line:
-            bwl=eval(getfield(line)) # list
-        if 'request.schema.FilterEfficiency' in line:
-            filter_eff=float(eval(getfield(line))) # float
-        if 'request.schema.RunWhitelist' in line:
-            rwl=eval(getfield(line))
-
-    return get_expected_events_withinput(float(rne.replace("'","")),ids,bwl,rwl,filter_eff)
   
 def get_expected_events_withdict(dict_from_workload):
   if 'RequestNumEvents' in dict_from_workload['request']['schema']:
@@ -502,37 +427,18 @@ def get_expected_events_withdict(dict_from_workload):
   else:
     rwl=[]
     
-  return get_expected_events_withinput(rne,
-                                       ids,
-                                       bwl,
-                                       rwl,
-                                       f)
+  return get_expected_events_withinput(rne, ids, bwl, rwl, f)
 
   
-def get_expected_events_withinput(
-  rne,
-  ids,
-  bwl,
-  rwl,
-  filter_eff):
-    #print "Calucalating expected events", rne, ids, bwl, rwl, filter_eff
+def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
     #wrap up
     if rne=='None' or rne==None or rne==0:
 
-        #from DBSAPI.dbsApi import DbsApi
-        #dbsapi = DbsApi()
         s=0.
         for d in ids:
           if len(rwl):
-            #rwlfordbs=' or '.join(map(lambda s : "run=%s"%s, rwl))
-            #s+=eval(os.popen('dbs search --production --noheader  --query  "find sum(file.numevents) where dataset = %s and (%s)"'%(d,rwlfordbs)).read())
-            #make sure this is going to be viable
             try:
                 print "$sss %s"%(d)
-                #blocks = dbsapi.listBlocks(str(d)) #old
-                #comm = './das_client.py --query="block dataset=%s" --format=json --das-headers --limit=0'%(dataset)
-                #data = commands.getoutput(comm)
-                #blocks = json.loads(data)["data"]
                 ret = generic_get(dbs3_url+"blocks?dataset=%s" %(d)) #returns blocks names
                 blocks= ret
             except:
@@ -541,23 +447,13 @@ def get_expected_events_withinput(
 
             if blocks:
               for run in rwl:
-                #q='dbs search --production --noheader  --query  "find sum(file.numevents) where dataset = %s and (run=%s)" '%(d,run)
-                #q = './das_client.py --query="file dataset=%s run=%s | sum(file.nevents)" --format=json --das-headers --limit=0' %(d,run)
-                #result = commands.getoutput(q)
                 ret = generic_get(dbs3_url+"filesummaries?dataset=%s&run_num=%s" %(d, run)) #returns blocks names
                 data = ret
                 try:
-                  #s+=eval(os.popen(q).read())
-                  #s += int(data["data"]["result"]["value"])
                   s += int(data[0]["num_event"])
                 except:
                   print d,"does not have event for",run
-                  #import traceback
-                  #print traceback.format_exc()
           else:
-            #blocks = dbsapi.listBlocks(str(d)) #old
-            #comm = './das_client.py --query="block dataset=%s" --format=json --das-headers --limit=0'%(d)
-            #data = commands.getoutput(comm)
             ret = generic_get(dbs3_url+"blocks?dataset=%s" %(d)) #returns blocks names ????
             blocks = ret
             if len(bwl):
@@ -581,10 +477,6 @@ def get_expected_events_withinput(
                 if not '#' in b: #a block whitelist needs that
                   continue
                 try:
-                    #print "###: dbs search --production --noheader  --query  find block.numevents where block = %s"%(b)
-                    #s+=eval(os.popen('dbs search --production --noheader  --query  "find block.numevents where block = %s"'%(b)).readline())
-                    #q = './das_client.py --query="block block=%s | grep block.nevents" --format=json --das-headers --limit=0'%(b)
-                    #result = commands.getoutput(q)
                     ret = generic_get(dbs3_url+"blocksummaries?block_name=%s" %(b.replace("#","%23"))) #encode # to HTML URL
                     data = ret
                     s += data[0]["num_event"]
@@ -596,9 +488,6 @@ def get_expected_events_withinput(
             #print "from ds list"
             for d in ids:
                 try:
-                    #s+=eval(os.popen('dbs search --production --noheader  --query  "find sum(block.numevents) where dataset = %s"'%(d)).readline())
-                    #q = './das_client.py --query="block dataset=%s | sum(block.nevents)" --format=json --das-headers --limit=0'%(d)
-                    #result = commands.getoutput(q)
                     ret = generic_get(dbs3_url+"blocksummaries?dataset=%s" %(d))
                     data = ret
                     s += data[0]["num_event"]
@@ -606,115 +495,10 @@ def get_expected_events_withinput(
                     print d,"does not have events"
             return s*filter_eff
     else:
-        #use requested number
-        #print "from requested number"
         return rne
 
 #------------------------------------------------------------------------------- 
-
-def prepIDs2ReqNames(prepIDs):
-  req_list = get_requests_list()
-  req_names_dict={}
-  for prepID in prepIDs:
-    this_id_names=[]
-    matching_reqs = filter(lambda req: prepID in req["request_name"] ,req_list )
-    matching_reqs_names = map(lambda req: req["request_name"],matching_reqs )
-    for matching_req_name in matching_reqs_names:
-      this_id_names.append(matching_req_name)
-    req_names_dict[prepID]=this_id_names
-  return req_names_dict
-
-#------------------------------------------------------------------------------- 
-# extract a campaign from a request
-# typical name etorassa_EXO-Fall11_R4-01119_T1_UK_RAL_MSS_v1_120207_173750_3364
-# after the first _ count 2 - and stop at _
-def get_prep_id(request):
-    req_name=request["request_name"]
-
-    name = req_name
-    while name.count('_')>=1:
-        name = name.split('_',1)[-1]
-        if name.count('-') ==2:
-            (pwg,campaign,begin_withserial) = name.split('-')
-            if len(pwg) == 3:
-                if begin_withserial[0:5].isdigit():
-                    serial = begin_withserial[0:5]
-                    prep_id = '-'.join([ pwg, campaign, serial])
-                    return prep_id
-    return 'No-Prepid-Found'
-"""
-    spl = req_name.split("_")
-    for (i_word,word) in enumerate( spl ):
-        next_word=None
-        if i_word!= len(spl)-1:
-            next_word= spl[i_word+1]
-            
-        if len(word.split("-")[0]) !=3:
-            continue
-        ## abc-z
-        if word.count("-") ==2:
-            ## abc-y-z
-            if not word.split("-")[-1].isdigit():
-                continue
-            ## abc-z-<n>
-            if len(word.split("-")[-1]) != 5:
-                continue
-            ## abc-z-01234
-            return word
-        elif word.count("-") ==1 and next_word: 
-            ## abc-y_<next>
-            if next_word.count('-')!=1:
-                continue
-            ## abc-y_z-u
-            if not next_word.split("-")[-1].isdigit():
-                continue
-            ## abc-y_z-<n>
-            if len(next_word.split("-")[-1]) !=5:
-                continue
-            ## abc-y_z-01234
-            return word+"_"+next_word
-        else:
-            continue
-
-            
-    return 'No-Prepid-Found'
-"""
-"""
-    name = req_name
-    if name.count('_')>=1:
-        name = name.split('_',1)[-1]
-        if name.count('-') ==2:
-            (pwg,campaign,begin_withserial) = name.split('-')
-            if len(pwg) == 3:
-                if begin_withserial[0:5].isdigit():
-                    serial = begin_withserial[0:5]
-                    prep_id = '-'.join([ pwg, campaign, serial])
-                    return prep_id
-
-    return 'No-Prepid-Found'
-"""
-"""
-  # is an ACDC request
-  if "ACDC" in req_name:
-    return "ACDC-ACDC-00000"
-    
-  chars_to_find=["-","-","_"]
-  char_found=0
-  prep_id=""
-  for char in req_name[req_name.find("_"):]:
-    prep_id+=char
-    if char!=chars_to_find[char_found]:
-      continue
-    if char_found==2:
-      prep_id=prep_id.strip("_")
-      break
-    char_found+=1
-  return  prep_id
-"""
-
-#------------------------------------------------------------------------------- 
-
-
+## methods to format a date from ReqMngr workload date lien
 def timelist_to_str(timelist):
   (h,m,s)=map(int,timelist)[3:]
   return "%02d%02d%02d"%(h,m,s)
@@ -729,19 +513,6 @@ def datelist_to_str(datelist):
     day="0%s"%day
   datestr="%s%s%s"%(year,month,day)
   return datestr
-  
-def get_submission_date(reqname):
-  #print "%s%s" %(request_detail_address,reqname)
-  wflowdetails=generic_get("%s%s" %(request_detail_address,reqname),False )
-  lines = wflowdetails.split("<br/>")
-  try:
-    dateline=filter(lambda line: "request.schema.RequestDate" in line,lines)[0]
-    datelist_str = dateline.split("=")[1]
-    datelist=map(str, eval(datelist_str))
-    return datelist_to_str(datelist)
-  except:
-    return "000101"
-
 
 #------------------------------------------------------------------------------- 
 
@@ -783,14 +554,9 @@ def get_status_nevts_from_dbs(dataset):
   total_open=0
 
   if debug:    print "load"
-  #from DBSAPI.dbsApi import DbsApi
-  #dbsapi = DbsApi()
   if debug:    print "instance"
   if debug:    print "blocks"
   try:
-    #blocks = dbsapi.listBlocks(str(dataset))
-    #comm = './das_client.py --query="block dataset=%s" --format=json --das-headers --limit=0'%(dataset)
-    #data = commands.getoutput(comm)
     ret = generic_get(dbs3_url+"blocks?dataset=%s&detail=true" %(dataset))
     blocks = ret
   except:
@@ -802,12 +568,6 @@ def get_status_nevts_from_dbs(dataset):
 
   for b in blocks:
     if debug:    print b
-    #if b['OpenForWriting'] == '0':
-    #  total_evts+=int(b['NumberOfEvents'])
-    #elif b['OpenForWriting'] == '1':
-    #  total_open+=int(b['NumberOfEvents'])
-    #b["block"] = filter(lambda bd : not 'replica' in bd, b["block"])
-    #b["block"] = filter(lambda bd : 'nevents' in bd, b["block"])
     if b["open_for_writing"] == 0: #lame DAS format: block info in a single object in list ????
         ret = generic_get(dbs3_url+"blocksummaries?block_name=%s" %(b["block_name"].replace("#","%23")))
         data = ret
@@ -817,49 +577,7 @@ def get_status_nevts_from_dbs(dataset):
         data = ret
         total_open+=data[0]["num_event"]
   if debug:    print "done"
-  
-  """
-  dbs_command='dbs search --production --noheader --query="find block,block.numevents where dataset like %s and block.status=0"'%dataset
-  output = commands.getoutput(dbs_command)
-  
-  ##NO it is not true
-  #if output=='':
-  #  return undefined
-  total_evts=0
-  try:
-    if debug: print "trying to sum",output
-    for line in output.split("\n"):
-      if not line: continue
-      (block,n)=line.split()
-      total_evts+=int(n)
-      #total_evts=sum(map(int,output.split("\n")))
-  except:
-    print "failed to sum ",dataset
-    return undefined
 
-  dbs_command='dbs search --production --noheader --query="find block,block.numevents where dataset like %s and block.status=1"'%dataset
-  output = commands.getoutput(dbs_command)
-
-  total_open=0
-
-  #print output
-  try:
-    if output!='':
-      if debug: print "trying to sum open"
-      for line in output.split("\n"):
-        if not line : continue
-        (block,n)=line.split()
-        total_open+=int(n)
-        #total_open=sum(map(int,output.split("\n")))
-  except:
-    print "failed to sum open ",dataset
-    return undefined
-
-  #print "executed %s and found %s events" %(dbs_command ,total_evts)
-  """
-  
-  #getstatus='dbs search --production --noheader --query "find dataset.status where dataset = %s"'%dataset
-  #getstatus = './das_client.py --query="status dataset=%s" --format=json --das-headers --limit=0'%(dataset)
   try:
     ret = generic_post(dbs3_url+"datasetlist", {"dataset":[dataset], "detail":True})
     result = json.loads(ret) #post method return data as string so we must load it
@@ -870,48 +588,15 @@ def get_status_nevts_from_dbs(dataset):
   except:
     print "\n ERROR getting dataset status. return:%s"%(ret)
     raise Exception("  datasetlist POST data:\n%s \n\n results:\n%s"%({"dataset":[dataset], "detail":True}, ret))
-    #print "Das glitch on status retrieval for",dataset
-    #print "  query:\n%s"%(getstatus)
-    #print result
-    #return undefined
 
   if not status:
     status=None
 
   #print (status,total_evts,total_open)
   return (status,total_evts,total_open)
-  
-#-------------------------------------------------------------------------------  
-# Fetch the priority after changing it
-# this is done parsing the workload page
-# https://cmsweb.cern.ch/reqmgr/view/showWorkload?requestName=casarsa_BPH-Summer12-00008_21_v3__120309_170117
-def get_present_priority(req):
-  workload_info_url=request_detail_address+req["request_name"]
-  workload_info=generic_get(workload_info_url,do_eval=False)
-  # Interpret the workload file, nicer would be as python object
-  req_priority=-1
-  for line in workload_info.split("\n"):      
-    if "request.priority" in line:
-      #print "********* %s" %line
-      line=line.replace("<br/>","")      
-      prio_as_string=line.split("=")[-1]
-      prio_as_string=prio_as_string.replace("'","")
-      #remove '
-      req_priority = int(prio_as_string)
-  return req_priority
-      
-
-#-------------------------------------------------------------------------------  
 
 #------------------------------------------------------------------------------- 
 def get_running_jobs(req):
-  #stats_dict={}
-  #for key in wma2reason:
-    #reason_key=wma2reason[key]
-    #quantity=0
-    #if req.has_key(key):
-      #quantity=req[key]
-    #stats_dict[reason_key]=int(quantity)
   key="Running"
   nrunning = 0
   if req.has_key(key):
@@ -971,7 +656,8 @@ def getDictFromWorkload(req_name, attributes=['request','constraints']):
 
 numberofrequestnameprocessed=0
 countOld=0
-def parallel_test(arguments,force=False):
+
+def parallel_test(arguments, force=False):
   DEBUGME=False
   global countOld
   req,old_useful_info = arguments
@@ -1124,12 +810,6 @@ def parallel_test(arguments,force=False):
         if not phedexObj:
           phedexObj=phedex(pdmv_request_dict["pdmv_dataset_name"])
         pdmv_request_dict['pdmv_custodial_sites']=custodials(phedexObj)
-        ## the problem with trying to assign custodial from the input dataset is that later on, it cannot be changed, and will probably be wrong downstream
-        #if pdmv_request_dict['pdmv_custodial_sites']==[] and pdmv_request_dict['pdmv_input_dataset']!='':
-        #  ## the ouput dataset might not even exists yet.
-        #  if not phedexObjInput:
-        #    phedexObjInput=phedex(pdmv_request_dict['pdmv_input_dataset'])
-        #  pdmv_request_dict['pdmv_custodial_sites']=custodials(phedexObjInput)
           
         
       if not 'pdmv_open_evts_in_DAS' in pdmv_request_dict:
@@ -1144,26 +824,10 @@ def parallel_test(arguments,force=False):
         print "skewed with no perf"
         from Performances import Performances
         pdmv_request_dict['pdmv_performance']=Performances(req_name)
-        #print pdmv_request_dict['pdmv_performance']
-        #pdmv_request_dict['pdmv_performance']={}
 
-        
-      ##this pulls in way too many requests
-      #if (pdmv_request_dict['pdmv_status_from_reqmngr'] in complete_stati) and pdmv_request_dict['pdmv_completion_eta_in_DAS']<90:
-      #  skewed=True
-
-      # this is treated later on. was there only for transitionning
-      ##if not 'pdmv_dataset_list' in pdmv_request_dict or pdmv_request_dict['pdmv_dataset_list']==[] or force:
-      ##  dataset,dataset_list=get_dataset_name(req_name)
-      ##  pdmv_request_dict['pdmv_dataset_list']=dataset_list
-        
       if (pdmv_request_dict['pdmv_status_from_reqmngr'] in complete_stati) and not skewed and not force:
         print "** %s is there already"%req_name
-        #print pdmv_request_dict['pdmv_performance']
-        #print pdmv_request_dict['pdmv_at_T2']
         return pdmv_request_dict
-
-
 
       print req_name," is skewed ? ",skewed
       if allowSkippingOnRandom!=None and skewed and random.random()> allowSkippingOnRandom and not force:
@@ -1188,11 +852,8 @@ def parallel_test(arguments,force=False):
       if not dict_from_workload: return {}
       pdmv_request_dict['pdmv_configs'] = configsFromWorkload( dict_from_workload )
 
-    #dict_from_workload=getDictFromWorkload(req_name)
-    #if not dict_from_workload:      return {}
 
     # assign the date
-    ### JRout pdmv_request_dict["pdmv_submission_date"]=get_submission_date(req["request_name"])
     if not 'pdmv_submission_date' in pdmv_request_dict or not 'pdmv_submission_time' in pdmv_request_dict:
       ##load it on demand only
       if not dict_from_workload: dict_from_workload=getDictFromWorkload(req_name)
@@ -1252,7 +913,6 @@ def parallel_test(arguments,force=False):
       prep_id = dict_from_workload['request']['schema']['PrepID']
     else:
       prep_id='No-Prepid-Found'
-    #prep_id=get_prep_id(req)
     if 'RequestName' in dict_from_workload['request']['schema']:
       if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_HIG-Summer12DR53X-02171_00353_v0__141218_204531_2518':
         prep_id = 'HIG-Summer12DR53X-02171'
@@ -1283,7 +943,6 @@ def parallel_test(arguments,force=False):
       pdmv_request_dict["pdmv_priority"]=dict_from_workload['request']['schema']['RequestPriority']
       if DEBUGME: print "----------"      
       # Present priority
-      ###JR out pdmv_request_dict["pdmv_present_priority"]=get_present_priority(req)
       pdmv_request_dict["pdmv_present_priority"]=dict_from_workload['request']['priority']
     
     if DEBUGME: print "-----------"      
@@ -1319,15 +978,6 @@ def parallel_test(arguments,force=False):
       if makedsnquery:
         dataset_name,dataset_list=get_dataset_name(pdmv_request_dict["pdmv_request_name"])
     except:
-      pass
-      """
-      try:
-        if makedsnquery:
-          dataset_name,dataset_list=get_dataset_name(pdmv_request_dict["pdmv_request_name"])
-      except:
-        print "Totally failed to get a dataset name for:",pdmv_request_dict["pdmv_request_name"]
-        pass
-      """
       pass
     
     pdmv_request_dict["pdmv_dataset_name"]=dataset_name
@@ -1521,454 +1171,3 @@ def parallel_test(arguments,force=False):
     dict_from_workload=TransformRequestIntoDict( 'pdmvserv_HIG-Summer11pLHE-00079_00009_v0_STEP0ATCERN_131205_120245_8592' , ['request'], True )
     
     return {}
-
-#------------------------------------------------------------------------------- 
-
-def extract(akey, old_useful_info=[],merge=False):
-  pdmv_request_list=[]
-  req_list = get_requests_list()
-  print len(req_list),"in reqmng"
-  
-  # filter on the ones which have a status  
-  req_list=filter (lambda r: r.has_key("status"), req_list)
-  print len(req_list),"with status"
-
-  if type(akey)==list:
-    match_req_list=[]
-    for key in akey:
-      if not key: continue
-      match_req_list+=filter (lambda r: key in r["request_name"], req_list)
-  else:
-    match_req_list=filter (lambda r: akey in r["request_name"], req_list)
-
-  print len(match_req_list),"filtered"
-
-  for (n,req) in enumerate(match_req_list):
-    print "Found",req["request_name"],":",n,"/",len(match_req_list)
-    pdmv_request_list.append(
-      parallel_test( [req,old_useful_info], force=True )
-      )
-    
-  pdmv_request_list=filter(lambda r:r!={},pdmv_request_list)
-  if merge:
-    for req in req_list:
-      if req in old_useful_info:
-        print "pop one form old"
-        old_useful_info.pop(req)
-    return pdmv_request_list+old_useful_info
-  else:
-    return pdmv_request_list
-  
-  
-
-def extract_useful_info_from_requests(old_useful_info=[],Nthreads=1):
-  '''
-  Put them in a Json
-  ''' 
-  pdmv_request_list=[]
-  req_list = get_requests_list()
-
-  print len(req_list)
-  
-  # filter on the ones which have a status  
-  req_list=filter (lambda r: r.has_key("status"), req_list)
-
-  #### filter on a certain list of campaigns
-  ##req_list=filter (lambda r: "Summer12" in r["request_name"], req_list)
-  ####req_list=filter (lambda r: "EXO-Summer12_DR52X-00202" in r["request_name"], req_list)
-
-  # Multithreaded given the number of services to be queried
-  print "Creating processing pool (%s processes)" %Nthreads
-  pool = multiprocessing.Pool(Nthreads)
-  print "Dispaching requests to processes..."  
-  # this avoids an expensive copy
-  repeated_old_useful_info=itertools.repeat(old_useful_info,len(req_list))
-  pdmv_request_list = pool.map(parallel_test, itertools.izip(req_list,repeated_old_useful_info))
-  print "End dispatching!"
-
-  pdmv_request_list=filter(lambda r:r!={},pdmv_request_list)
-     
-  return pdmv_request_list
-
-
-#------------------------------------------------------------------------------- 
-
-def reduce_big_numbers(number):
-  if number < -1:
-    number=-1
-  s_number=str(number)
-  s_number=re.sub("000000$","M",s_number)
-  s_number=re.sub("000$","k",s_number)
-  return s_number
-
-#-------------------------------------------------------------------------------
-
-def linkToRunStats(req_name):
-  link=runStats_address+req_name
-  href='<a href="%s">%s</a>' %(link,req_name)
-  return href
-
-#------------------------------------------------------------------------------- 
-# campaign,pdmv status,status,type,(priority,) name
-def get_table_line(pdmv_req):
-  line ="<tr>"
-  for quality in [get_DASlink(pdmv_req["pdmv_dataset_name"]),
-                  "%2.2f"%float(pdmv_req["pdmv_completion_in_DAS"]),
-                  pdmv_req["pdmv_campaign"],
-                  pdmv_req["pdmv_submission_date"],
-                  pdmv_req["pdmv_running_days"],
-                  pdmv_req["pdmv_completion_eta_in_DAS"],
-                  reduce_big_numbers(pdmv_req["pdmv_expected_events"]),
-                  pdmv_req["pdmv_evts_in_DAS"],                  
-                  pdmv_req["pdmv_status_in_DAS"],
-                  #pdmv_req["pdmv_status"],
-                  pdmv_req["pdmv_status_from_reqmngr"],
-                  #reduce_big_numbers(pdmv_req["pdmv_priority"]),
-                  reduce_big_numbers(pdmv_req["pdmv_present_priority"]),
-                  #pdmv_req["pdmv_type"].replace("MonteCarlo","MC"),
-                  get_preplink(pdmv_req["pdmv_prep_id"]),
-                  linkToRunStats(pdmv_req["pdmv_request_name"]),
-                  pdmv_req["pdmv_monitor_time"]
-                  ]:
-    line+="<td>%s</td>"%quality
-  line+="</tr>\n"
-  return line
-  
-#-------------------------------------------------------------------------------
-
-def get_preplink(prepid):
-  url= "http://cms.cern.ch/iCMS/prep/requestmanagement?code=%s"%prepid
-  link= "<a href=%s>%s</a>"%(url,prepid)
-  return link
-
-#------------------------------------------------------------------------------- 
-
-def get_DASlink(dataset):
-  #print "***%s***"%dataset
-  das_url="https://cmsweb.cern.ch/das/request?view=list&limit=10&instance=cms_dbs_prod_global&input=dataset+dataset%%3D%s*+status%%3D*"
-  dataset_enc=dataset.replace("/","%2F")
-  das_url=das_url %dataset_enc
-  return "<a href=%s>%s<a>" %(das_url,dataset)
-
-#------------------------------------------------------------------------------- 
-# print stats about requests
-def print_stats(pdmv_req_list,prepids_to_filter=[],filter_on_req_name=''):
-  
-  
-  # Filter by Ids
-  section_prepid_list_not_there=""
-  prepids_not_there=[]
-  if prepids_to_filter!=[]:
-    pdmv_req_list=filter(lambda pdmv_dict: pdmv_dict["pdmv_prep_id"] in prepids_to_filter,pdmv_req_list)
-    available_prepids=map(lambda r: r["pdmv_prep_id"],pdmv_req_list)
-    prepids_not_there=filter(lambda prepid: not prepid in available_prepids,prepids_to_filter)
-  if prepids_not_there!=[]:
-    section_prepid_list_not_there="<h2>Requested PREP-IDs not yed in the Request Manager:</h2>\n"
-    section_prepid_list_not_there+="<ul>"
-    for prepid in prepids_not_there:
-      section_prepid_list_not_there+="<li>%s</li>"%get_preplink(prepid)
-    section_prepid_list_not_there+="</ul>"
-
-  if filter_on_req_name!='':
-    pdmv_req_list = filter (lambda req: filter_on_req_name in req['pdmv_request_name'],pdmv_req_list)
-
-  # Total events done
-  total_evts_done=0
-  for req in pdmv_req_list:
-    total_evts_done+=req["pdmv_evts_in_DAS"]    
-
-  # Total events done 
-  total_evts_exp=0
-  for req in pdmv_req_list:
-    if 'pdmv_expected_events' in req:
-      total_evts_exp+=req["pdmv_expected_events"]
-    else:
-      print "cannot sum up expected for",req['pdmv_request_name']
-      req["pdmv_expected_events"]=0
-  
-  # Total Number of Jobs on the grid
-  total_jobs=0
-  for req in pdmv_req_list:
-    total_jobs+=req["pdmv_all_jobs"]
-  
-  # Total Number of Jobs running on the grid
-  total_running=0
-  for req in pdmv_req_list:
-    total_running+=req["pdmv_running_jobs"]
-
-  # Total Number of Jobs pending in the batch
-  total_pending=0
-  for req in pdmv_req_list:
-    total_pending+=req["pdmv_pending_jobs"]
-
-  n_running_total=0
-  n_running_campaign_dict={}
-  n_changeable_total=0
-  n_changeable_campaign_dict={}
-  
-  table_lines="<thead><tr>"
-  for quality in ["Dataset",
-                  "Completion DAS (%)",
-                  "campaign",
-                  "Sub. Date",
-                  "Submitted since days",
-                  #"Job Completion level (%)", 
-                  "Eta (days)",
-                  "Exp. Evts",               
-                  "Evts DAS",                  
-                  "DS Status",
-                  #"PdmV Status", 
-                  "Status from rqmngr", 
-                  #"Sub. Prio.",
-                  "Pres. Prio.",
-                  #"Type", 
-                  "PrepID", 
-                  "Name",
-                  "Updated"
-                  ]:
-    table_lines+="<th>%s</th>"%quality
-  table_lines+="</tr></thead>\n"
-  
-  table_lines+="<tbody>\n"
-  for pdmv_request_dict in pdmv_req_list:
-    campaign=pdmv_request_dict["pdmv_campaign"]
-    if pdmv_request_dict["pdmv_status_from_reqmngr"]=="running":
-      n_running_total+=1      
-      if not n_running_campaign_dict.has_key(campaign):
-        n_running_campaign_dict[campaign]=1
-      else:
-        n_running_campaign_dict[campaign]+=1
-    if pdmv_request_dict["pdmv_status"]=="ch_prio":
-      n_changeable_total+=1
-      if not n_changeable_campaign_dict.has_key(campaign):
-        n_changeable_campaign_dict[campaign]=1
-      else:
-        n_changeable_campaign_dict[campaign]+=1
-    
-    
-    
-    # fill table lines
-    table_lines+=get_table_line(pdmv_request_dict)
-  
-  table_lines+="</tbody>\n"
-  
-  # Print now the preamble
-  preamble="Last heart-beat: %s\n" %time.asctime()
-  preamble+= "<br> This page is experimental. Use it at your own risk!"
-  preamble+="<h2>Total Evts in DAS (for the requests on this page): %s</h2>" %total_evts_done
-  preamble+="<h2>Total Requests in Running status: %s</h2>\n" %n_running_total
-
-  preamble+="<ul>"
-  for campaign in sorted(n_running_campaign_dict.keys()):
-    preamble+="<li>%s: %s</li>\n"%(campaign,n_running_campaign_dict[campaign])
-  preamble+="</ul>"
-  preamble+="<h2>Total Requests Priority Changeable: %s</h2>\n" %n_changeable_total
-  preamble+="<ul>\n"
-  for campaign in sorted(n_changeable_campaign_dict.keys()):
-    preamble+="<li>%s: %s</li>\n"%(campaign,n_changeable_campaign_dict[campaign])
-  preamble+="</ul>\n"    
-  
-  
-  preamble+=section_prepid_list_not_there
-  
-  preamble+="<br>Job completion is calculated using DAS\n<br>"
-
-
-  page_head="""
-                <style type="text/css" title="currentStyle">
-                        @import "http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/media/css/demo_page.css"; 
-                        @import "http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/media/css/header.ccss";
-                        @import "http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/media/css/demo_table_jui.css";
-                        @import "http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/examples/examples_support/themes/smoothness/jquery-ui-1.8.4.custom.css";
-                        @import "http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/extras/ColReorder/media/css/ColReorder.css";
-                        @import "http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/extras/TableTools/media/css/TableTools.css";
-                        div.dataTables_wrapper { font-size: 15px; }
-                        table.display thead th, table.display td { font-size: 15px; }
-                        
-
-
-                </style>
-                <script type="text/javascript" language="javascript" src="http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/media/js/jquery.js"></script>                
-                <script type="text/javascript" language="javascript" src="http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/media/js/jquery.dataTables.js"></script>
-                <script type="text/javascript" language="javascript" src="http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/media/js/jquery.dataTables.min.js"></script>
-                <script type="text/javascript" language="javascript" src="http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/extras/ColReorder/media/js/ColReorder.js"></script>
-                <script type="text/javascript" language="javascript" src="http://cms-pdmv.web.cern.ch/cms-pdmv/DataTables/extras/TableTools/media/js/TableTools.min.js"></script>
-              
-                <script type="text/javascript" charset="utf-8">
-$(document).ready(function() {
-oTable = $("#example").dataTable({
-"bJQueryUI": true,
-"sPaginationType": "full_numbers",
-"iDisplayLength": 500
-});
-var params = getParams();
-if ('search' in params) {
-oTable.fnFilter( params['search'] )
-}
-} );
-
-function getParams() {
-var idx = document.URL.indexOf('?');
-var tempParams = new Object();
-if (idx != -1) {
-var pairs = document.URL.substring(idx+1, document.URL.length).split('&');
-for (var i=0; i<pairs.length; i++) {
-nameVal = pairs[i].split('=');
-tempParams[nameVal[0]] = nameVal[1];
-}
-}
-return tempParams;
-}
-
-                </script>
-  """
-
-
-  page_html ="<html>"
-  page_html+='<head>%s</head>\n'%page_head
-  page_html+=preamble  
-  page_html+='<table align="center" cellpadding="0" cellspacing="0" border="0" class="display" id="example">%s</table>'%table_lines
-  page_html+="</body></html>"
-  return page_html
-
-
-#-------------------------------------------------------------------------------
-
-def makeMon(filename,pageID,useful_info):
-    try:
-      ids = generic_get(filename)
-      stats_page = print_stats(useful_info,ids)
-      stats_file=open("stats_%s.html"%pageID,"w")
-      stats_file.write(stats_page)
-      stats_file.close()
-    except:
-      print "Error creating page for %s" %filename
-      pass 
-      
-#------------------------------------------------------------------------------- 
-import optparse
-def build_parser():
-  
-    usage= "Usage:\n %prog options"
-    parser = optparse.OptionParser(usage)
-    parser.add_option("--no_cache",default=False,action='store_true',
-                      help="Use not to use the cached stats json file. Default is False.")
-    parser.add_option("--nprocesses",default="1",
-                      help="Number of threads to query the CMS data services. Default is 1.")   
-   
-    parser.add_option("--refresh_interval",default="7200",
-                      help="Number of seconds between two refreshes.Default is 7200")   
-   
-    options,args=parser.parse_args()
-    return options,args
-  
-
-#------------------------------------------------------------------------------- 
-
-if __name__ == "__main__":
-    
-  # Execution parameters
-  options,args = build_parser()
-  refresh_interval=int(options.refresh_interval)
-  nprocesses = int(options.nprocesses)
-
-  cycle=0
-  
-  while True:
-
-    now=time.time()
-    stats_json_name="stats_json.txt"
-    stats_json_cache_name="stats_json_cache.txt"
-    stats_json_present = os.path.exists(stats_json_name)
-    lasttime=0 # 1st Jan 1970
-    if stats_json_present:
-      lasttime=os.path.getmtime(stats_json_name)
-    
-    useful_info=[]
-    if now-lasttime > refresh_interval or options.no_cache:         
-      print "File updated on %s now is %s : updating" %(time.ctime(lasttime),time.ctime(now))
-      # Put the json used to generate the webpage on disk
-      old_page_content=[]
-      if os.path.exists(stats_json_cache_name):
-        old_page_content_file=open(stats_json_cache_name,"r")
-        try:
-          old_page_content=eval(old_page_content_file.read())
-          #old_page_content=json.loads(old_page_content_file.read())
-        except:
-          print "\n\n\n\n reading from cache failed. \n\n\n\n"
-          sys.exit(-5)
-        old_page_content_file.close()
-        print "Got",len(old_page_content),"from cached old request statuses"
-      else:
-        print "No cache present. The Cache will be built."
-        
-
-      useful_info = extract_useful_info_from_requests(old_page_content,nprocesses)    
-
-      isNotReabable=True
-      timesFailed=0
-      while isNotReabable or timesFailed>5:
-        page_content_file=open(stats_json_name,"w")
-        #make it readable
-        page_content_file.write(pformat(useful_info))
-        #page_content_file.write(json.dumps(useful_info,indent=4))
-        page_content_file.close()
-        try:
-          rereadfile=open(stats_json_name)
-          rereadinformation=eval(rereadfile.read())
-          rereadfile.close()
-          isNotReabable=False
-        except:
-          print "i/o of information failed, try again"
-          timeFailed+=1
-          
-      shutil.copy(stats_json_name,stats_json_cache_name)
-
-    else:
-       page_content_file=open(stats_json_name,"r")
-       #useful_info=eval(page_content_file.read())
-       useful_info=json.loads(page_content_file.read())
-       page_content_file.close()
-            
-    # Prepare a general webpage
-    stats_page = print_stats(useful_info)
-    ##stats_file=open("stats.html","w")
-    ##write to the PdmV space directly
-    stats_file=open("/afs/cern.ch/cms/PPD/PdmV/web/stats/index.html","w")
-    stats_file.write(stats_page)
-    stats_file.close()
-
-    """
-    ##JR remove because outdated
-    # Prepare a webpage for some requests  
-    monlist=[['http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer12_HLT.txt','TSG'],
-["http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer12.txt",'Summer12'],
-["http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer12DR51X.txt",'Summer12DR'],
-["http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer11_Pub.txt",'Summer11_Pub'],
-["http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer12_PAG.txt",'PAG'],
-["http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer12_LowPU_dr.txt","LowPUDR"],
-["http://vlimant.web.cern.ch/vlimant/Directory/specialRequests/PrepIdSummer12_HLT_dr.txt","TSGDR"],
-["https://dpiparo.web.cern.ch/dpiparo/GlobalMonitoringScripts/highPriorityAnalyses.txt","HighPriority"]]
-
-    for filename,nick in monlist:
-       makeMon(filename,nick,useful_info)
-
-    # Summer12 52X
-    S1252x_html = print_stats ( useful_info,[],"52X")
-    S1252x_ids_file = open("stats_52X.html","w")
-    S1252x_ids_file.write(S1252x_html)
-    S1252x_ids_file.close()
-
-    """
-
-    l=open('stats.log','a')
-    l.write(time.asctime()+'\n')
-    l.close()
-
-    #nsecs=3600*2 - 100
-    nsecs=refresh_interval
-    print "\n\n\n\n \t\tSleeping %s secs \n\n\n\n" %nsecs
-    time.sleep(nsecs)
-
-    
-    
