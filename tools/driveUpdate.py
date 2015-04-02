@@ -461,7 +461,7 @@ def main_do( options ):
                             '', 'None', '_'] and
                     withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
                     ## we should trigger this only if events_in_das was updated for done
-                    update_comm = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
+                    update_comm = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
                     print "Triggering McM completed_evts syncing for a done request %s" % (
                             withRevisions['pdmv_prep_id'])
 
