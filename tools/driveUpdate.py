@@ -454,6 +454,18 @@ def main_do( options ):
                 if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found','','None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
                     inspect='curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
                     os.system(inspect)
+                ## he we should trigger McM update if request is in done.
+                ## because inspection on done doesn't exists.
+                if (withRevisions['pdmv_type'] != 'Resubmission' and
+                    withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found',
+                            '', 'None', '_'] and
+                    withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
+                    ## we should trigger this only if events_in_das was updated for done
+                    update_comm = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
+                    print "Triggering McM completed_evts syncing for a done request %s" % (
+                            withRevisions['pdmv_prep_id'])
+
+                    os.system(update_comm)
             except:
                 print "failed to update growth for",r
                 print traceback.format_exc()

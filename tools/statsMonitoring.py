@@ -35,18 +35,21 @@ import time
 import datetime
 import commands
 import re
-from pprint import pprint,pformat
 import multiprocessing
 import itertools
 import random
 import json
 
+from pprint import pprint,pformat
 from phedex import phedex,runningSites,custodials,atT2,atT3
 
 # Collect all the requests which are in one of these stati which allow for 
 priority_changable_stati=['new','assignment-approved']
-skippable_stati=["rejected", "aborted", "failed", "rejected-archived", "aborted-archived", "failed-archived", "aborted-completed"]
-complete_stati=["announced","rejected", "aborted","failed","normal-archived","aborted-archived","failed-archived"]
+skippable_stati = ["rejected", "aborted", "failed", "rejected-archived",
+                  "aborted-archived", "failed-archived", "aborted-completed"]
+
+complete_stati = ["announced", "rejected", "aborted", "failed", "normal-archived",
+                  "aborted-archived", "failed-archived"]
 
 # Types of requests
 request_types=['MonteCarlo',
@@ -623,7 +626,7 @@ def get_all_jobs(req):
   return all_jobs
 
 #------------------------------------------------------------------------------- 
-def calc_eta(level,running_days):
+def calc_eta(level, running_days):
   flevel=float(level)
   irunning_days=int(running_days)
   if flevel>=99.99:
