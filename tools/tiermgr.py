@@ -1,7 +1,32 @@
 #!/usr/bin/python
 
+import json
 import pycurl
+from collections import OrderedDict
 from cStringIO import StringIO
+
+
+def compareDS(t1, t2):
+    def tierP(t):
+        tierPriority=[
+            '/RECO',
+            'SIM-RECO',
+            'DIGI-RECO',
+            'AOD',
+            'SIM-RAW-RECO',
+            'DQM' ,
+            'GEN-SIM',
+            'RAW-RECO',
+            'USER',
+            'ALCARECO']
+        for (p, tier) in enumerate(tierPriority):
+            if tier in t:
+                return p
+        return t
+    p1 = tierP(t1)
+    p2 = tierP(t2)
+    decision = (p1 > p2)
+    return decision * 2 - 1
 
 
 class GetTiers():
@@ -39,5 +64,18 @@ class GetTiers():
                          .replace('(', '').strip())
         return tiers
 
-t = GetTiers().dbs_tiers()
-print t
+# extend with what is in McM
+mcm_tiers = ['GEN-SIM', 'AODSIM', 'GEN-SIM-RAW', 'GEN', 'MINIAODSIM', 'DQMIO',
+             'DQM', 'GEN-SIM-RECO', 'GEN-SIM-RECODEBUG', 'ALCARECO',
+             'GEN-SIM-RAW-RECO', 'GEN-RAW', 'GEN-SIM-RAWDEBUG',
+             'GEN-SIM-DIGI-RAW', 'GEN-RAWDEBUG', 'LHE', 'RECO', 'PREMIX-RAW']
+
+tiers = list(set(GetTiers().dbs_tiers() + mcm_tiers))
+tiers.sort(cmp=compareDS)
+for t in tiers:
+    print t
+objt = {}
+for i, d in enumerate(tiers):
+    objt[d] = i*5
+print json.dumps(objt)
+
