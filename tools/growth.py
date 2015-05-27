@@ -50,7 +50,11 @@ def plotGrowth(thisDoc,i,force=False,wait=False):
             if 'pdmv_dataset_statuses' in nextOne:
                 #print "getting",nextOne['pdmv_dataset_statuses'].keys()
                 for ds in nextOne['pdmv_dataset_statuses'].keys():
-                    if ds == thisDoc['pdmv_dataset_name']: continue ## already taken care of        
+                    """
+                    fix for issue #22: commenting out next 2 lines
+                    ## already taken care of
+                    if ds == thisDoc['pdmv_dataset_name']: continue
+                    """
                     if not ds in graphs_by_ds.keys():
                         #print "added a graph for",ds
                         graphs_by_ds[ds] = ROOT.TGraph()
