@@ -3,6 +3,7 @@
 import pycurl
 from cStringIO import StringIO
 
+
 class GetTiers():
 
     def __init__(self):
@@ -27,11 +28,16 @@ class GetTiers():
             print "Error %s/n" % curl.getinfo(curl.RESPONSE_CODE)
 
     def dbs_tiers(self):
+        tiers = []
         page, status = self.curl(self.github_raw_url)
         page = page.split(self.uppercut)[1]
         page = page.split(self.downcut)[0]
-        print page
+        for line in page.strip().split(';'):
+            if line == '':
+                continue
+            tiers.append(line.split('VALUES')[1].split(',')[0].replace("'", "")
+                         .replace('(', '').strip())
+        return tiers
 
-
-gt = GetTiers()
-gt.dbs_tiers()
+t = GetTiers().dbs_tiers()
+print t
