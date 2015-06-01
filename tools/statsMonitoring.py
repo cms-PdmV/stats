@@ -197,40 +197,27 @@ def get_dataset_name(reqname):
   dataset=''
   apossibleChoice=''
 
-  def compareDS(s1, s2):
-    t1=s1.split('/')[1:]
-    t2=s2.split('/')[1:]
-    if len(t1[1]) > len(t2[1]):
-      #print t1,t2,True
-      return 1
-    else:
-      #decision=t1[2] < t2[2]
-      def tierP(t):
-        tierPriority=[
-                      '/RECO', 
-                      'SIM-RECO',
-                      'DIGI-RECO',
-                      'AOD',
-                      'SIM-RAW-RECO',
-                      'DQM' ,
-                      'GEN-SIM',
-                      'RAW-RECO',
-                      'USER',
-                      'ALCARECO']
-        
-        for (p,tier) in enumerate(tierPriority):
-          if tier in t:
-            #print t,p
-            return p
-        #print t
-        return t
-      p1=tierP(t1[2])
-      p2=tierP(t2[2])
-      decision=(p1> p2)
-      #print t1,t2,decision
-      return decision*2 -1
-                                                                                                                                                  
-  dataset_list.sort(cmp=compareDS)
+
+  def dataset_compare(dataset_one, dataset_two):
+      """
+      Custom sorting for tiers
+      """
+      dataset_one = dataset_one.split('/')[1:]
+      dataset_two = dataset_two.split('/')[1:]
+      if len(dataset_one[1]) > len(dataset_two[1]):
+          return 1
+      f = open('tiers.json', 'r')
+      tier_priority = json.loads(str(f.read()))
+      f.close()
+      priority = [1000, 1000]
+      for i, t in enumerate([dataset_one[2], dataset_two[2]]):
+          try:
+              priority[i] = int(tier_priority[t])
+          except KeyError:
+              pass
+      return (priority[0] > priority[1])*2-1
+
+  dataset_list.sort(cmp=dataset_compare)
   if len(dataset_list)==0:
     dataset='None Yet'
   else:
