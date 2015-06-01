@@ -64,16 +64,16 @@ class GetTiers():
                          .replace('(', '').strip())
         return tiers
 
-# extend with what is in McM
-mcm_tiers = ['GEN-SIM', 'AODSIM', 'GEN-SIM-RAW', 'GEN', 'MINIAODSIM', 'DQMIO',
-             'DQM', 'GEN-SIM-RECO', 'GEN-SIM-RECODEBUG', 'ALCARECO',
-             'GEN-SIM-RAW-RECO', 'GEN-RAW', 'GEN-SIM-RAWDEBUG',
-             'GEN-SIM-DIGI-RAW', 'GEN-RAWDEBUG', 'LHE', 'RECO', 'PREMIX-RAW']
+    def mcm_tiers(self):
+        # extend with what is in McM
+        return ['GEN-SIM', 'AODSIM', 'GEN-SIM-RAW', 'GEN', 'MINIAODSIM', 'LHE',
+                'DQM', 'GEN-SIM-RECO', 'GEN-SIM-RECODEBUG', 'ALCARECO', 'RECO',
+                'GEN-SIM-RAW-RECO', 'GEN-RAW', 'GEN-SIM-RAWDEBUG',  'DQMIO',
+                'GEN-SIM-DIGI-RAW', 'GEN-RAWDEBUG', 'PREMIX-RAW']
 
-tiers = list(set(GetTiers().dbs_tiers() + mcm_tiers))
+gt = GetTiers()
+tiers = list(set(gt.dbs_tiers() + gt.mcm_tiers()))
 tiers.sort(cmp=compareDS)
-for t in tiers:
-    print t
 objt = {}
 for i, d in enumerate(tiers):
     objt[d] = i*5
