@@ -932,7 +932,8 @@ def parallel_test(arguments, force=False):
           "jen_a_ACDC_HIG-Phys14DR-00042_00080_v0__150113_211610_5968" : "HIG-Phys14DR-00042",
           "alahiff_BTV-Phys14DR-00023_00033_v0_castor_141217_165437_3766" : "BTV-Phys14DR-00023",
           "alahiff_BTV-Phys14DR-00021_00033_v0_castor_141217_165426_7676" : "BTV-Phys14DR-00021",
-          "alahiff_HIG-Phys14DR-00041_00081_v0__150105_195249_1950" : "HIG-Phys14DR-00041"
+          "alahiff_HIG-Phys14DR-00041_00081_v0__150105_195249_1950" : "HIG-Phys14DR-00041",
+          "jen_a_ACDC_HIG-Phys14DR-00041_00081_v0__150113_211059_5006" : "HIG-Phys14DR-00041"
       }
       if dict_from_workload['request']['schema']['RequestName'] in __computing_fck_ups:
         prep_id = __computing_fck_ups[
