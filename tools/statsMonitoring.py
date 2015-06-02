@@ -917,17 +917,31 @@ def parallel_test(arguments, force=False):
     else:
       prep_id='No-Prepid-Found'
     if 'RequestName' in dict_from_workload['request']['schema']:
-      if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_HIG-Summer12DR53X-02171_00353_v0__141218_204531_2518':
-        prep_id = 'HIG-Summer12DR53X-02171'
-      if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_TOP-Summer12DR53X-00276_00354_v0__141218_204512_1227':
-        prep_id = 'TOP-Summer12DR53X-00276'
-      if dict_from_workload['request']['schema']['RequestName'] == 'alahiff_TOP-Summer12DR53X-00275_00355_v0__141218_204521_7100':
-        prep_id = 'TOP-Summer12DR53X-00275'
+      __computing_fck_ups = {
+          "alahiff_HIG-Summer12DR53X-02171_00353_v0__141218_204531_2518" : "HIG-Summer12DR53X-02171",
+          "alahiff_TOP-Summer12DR53X-00276_00354_v0__141218_204512_1227" : "TOP-Summer12DR53X-00276",
+          "alahiff_TOP-Summer12DR53X-00275_00355_v0__141218_204521_7100" : "TOP-Summer12DR53X-00275",
+          "alahiff_BTV-Phys14DR-00012_00033_v0_castor_141217_165406_5018" : "BTV-Phys14DR-00012",
+          "alahiff_B2G-Phys14DR-00058_00084_v0__150105_195309_2573" : "B2G-Phys14DR-00058",
+          "alahiff_EXO-Phys14DR-00078_00053_v0__141217_165317_4158" : "EXO-Phys14DR-00078",
+          "alahiff_EXO-Phys14DR-00078_00053_v0__141217_165326_9241" : "EXO-Phys14DR-00078",
+          "alahiff_BTV-Phys14DR-00011_00033_v0_castor_141217_165355_3898" : "BTV-Phys14DR-00011",
+          "alahiff_BTV-Phys14DR-00016_00033_v0_castor_141217_165416_6880" : "BTV-Phys14DR-00016",
+          "alahiff_BTV-Phys14DR-00023_00033_v0_castor_141217_165305_1759" : "BTV-Phys14DR-00023",
+          "alahiff_HIG-Phys14DR-00042_00080_v0__150105_195258_4618" : "HIG-Phys14DR-00042",
+          "jen_a_ACDC_HIG-Phys14DR-00042_00080_v0__150113_211610_5968" : "HIG-Phys14DR-00042",
+          "alahiff_BTV-Phys14DR-00023_00033_v0_castor_141217_165437_3766" : "BTV-Phys14DR-00023",
+          "alahiff_BTV-Phys14DR-00021_00033_v0_castor_141217_165426_7676" : "BTV-Phys14DR-00021",
+          "alahiff_HIG-Phys14DR-00041_00081_v0__150105_195249_1950" : "HIG-Phys14DR-00041"
+      }
+      if dict_from_workload['request']['schema']['RequestName'] in __computing_fck_ups:
+        prep_id = __computing_fck_ups[
+            dict_from_workload['request']['schema']['RequestName']]
+
     pdmv_request_dict["pdmv_prep_id"]=prep_id
     campaign=get_campaign_from_prepid(prep_id)
-    pdmv_request_dict["pdmv_campaign"]=campaign    
+    pdmv_request_dict["pdmv_campaign"]=campaign
     req_extras={}
-
 
     # Priority
     ###JR out pdmv_request_dict["pdmv_priority"]=priority
