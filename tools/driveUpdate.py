@@ -261,7 +261,7 @@ def main():
                       action='store_true'
                       )
     parser.add_option("--do",
-                      choices=['update','insert','store','kill','list'],
+                      choices=['update','insert','kill','list'],
                       )
     parser.add_option("--db",
                       default="http://cms-pdmv-stats.cern.ch")
@@ -479,27 +479,6 @@ def main_do( options ):
         l=open('stats.log','a')
         l.write(time.asctime()+'\n')
         l.close()
-        
-    elif options.do == 'store':
-
-        from statsMonitoring import print_stats
-        
-        if options.search:
-            docs=filter( lambda docid : options.search in docid, docs)
-
-        dump=dumpSome(docs,limit)
-        f=open('stats_json.txt','w')        
-        f.write(json.dumps(dump, indent=4))
-        f.close()
-
-        print len(dump),"put in the flat file dump of the couch db"
-
-        stats_page = print_stats(dump)
-        stats_file=open("/afs/cern.ch/cms/PPD/PdmV/web/stats/index.html","w")
-        stats_file.write(stats_page)
-        stats_file.close()
-
-        print "stats static page created"
 
 if __name__ == "__main__":
     PROFILE=False
@@ -508,4 +487,3 @@ if __name__ == "__main__":
         cProfile.run('main()')
     else:
         main()
-    
