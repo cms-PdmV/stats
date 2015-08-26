@@ -451,7 +451,6 @@ def main_do( options ):
 
         repeated_req_list = itertools.repeat(req_list, len(docs))
 
-        print "##DEBUG data:\n%s" % (docs.__class__)
         print "Dispaching", len(docs), "requests to ", str(nproc), "processes..."
         pool = multiprocessing.Pool(nproc)
         results = pool.map(updateOneIt, itertools.izip(docs, repeated_req_list))
