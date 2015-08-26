@@ -40,10 +40,11 @@ import itertools
 import random
 import json
 
+from datetime import date
 from pprint import pprint,pformat
 from phedex import phedex,runningSites,custodials,atT2,atT3
 
-# Collect all the requests which are in one of these stati which allow for 
+# Collect all the requests which are in one of these stati which allow for
 priority_changable_stati=['new','assignment-approved']
 skippable_stati = ["rejected", "aborted", "failed", "rejected-archived",
                   "aborted-archived", "failed-archived", "aborted-completed"]
@@ -68,7 +69,17 @@ wma2reason = {'success':'success', # wma2reason by vincenzo spinoso!
     'total_jobs':'total_jobs',
     'inQueue' : 'inQueue'}
 
-#-------------------------------------------------------------------------------  
+def timer(method):
+    def timed(*args, **kw):
+        t0 = time.time()
+        result = method(*args, **kw)
+        t1 = time.time()
+        if t1-t0 > 100:
+            print "%s ####method took: %s" % (method.__name__, t1-t0)
+        return result
+    return timed
+
+#-------------------------------------------------------------------------------
 # Needed for authentication
 
 class X509CertAuth(httplib.HTTPSConnection):
@@ -76,39 +87,39 @@ class X509CertAuth(httplib.HTTPSConnection):
     def __init__(self, host, *args, **kwargs):
       key_file = None
       cert_file = None
-  
+
       x509_path = os.getenv("X509_USER_PROXY", None)
       if x509_path and os.path.exists(x509_path):
         key_file = cert_file = x509_path
-  
+
       if not key_file:
         x509_path = os.getenv("X509_USER_KEY", None)
         if x509_path and os.path.exists(x509_path):
           key_file = x509_path
-  
+
       if not cert_file:
         x509_path = os.getenv("X509_USER_CERT", None)
         if x509_path and os.path.exists(x509_path):
           cert_file = x509_path
-  
+
       if not key_file:
         x509_path = os.getenv("HOME") + "/.globus/userkey.pem"
         if os.path.exists(x509_path):
           key_file = x509_path
-  
+
       if not cert_file:
         x509_path = os.getenv("HOME") + "/.globus/usercert.pem"
         if os.path.exists(x509_path):
           cert_file = x509_path
-  
+
       if not key_file or not os.path.exists(key_file):
         print >>stderr, "No certificate private key file found"
         exit(1)
-  
+
       if not cert_file or not os.path.exists(cert_file):
         print >>stderr, "No certificate public key file found"
         exit(1)
-  
+
       httplib.HTTPSConnection.__init__(self,  host,key_file = key_file,cert_file = cert_file,**kwargs)
 
 #-------------------------------------------------------------------------------
@@ -127,11 +138,11 @@ def eval_wma_string(string):
 #-------------------------------------------------------------------------------
 
 def generic_get(url, do_eval=True):
-    opener=urllib2.build_opener(X509CertOpen())  
+    opener=urllib2.build_opener(X509CertOpen())
     datareq = urllib2.Request(url)
-    datareq.add_header('authenticated_wget', "The ultimate wgetter")  
+    datareq.add_header('authenticated_wget', "The ultimate wgetter")
 #   print "Getting material from %s..." %url,
-    requests_list_str=opener.open(datareq).read()  
+    requests_list_str=opener.open(datareq).read()
 
     ret_val=requests_list_str
     #print requests_list_str
@@ -151,47 +162,66 @@ def generic_post(url, data_input):
     return ret_val
 #-------------------------------------------------------------------------------
 
-def get_requests_list(pattern="", not_in_wmstats=False):
+def get_requests_list(pattern="", not_in_wmstats=False, newest=False):
 
     if not_in_wmstats:
       return get_requests_list_old(pattern)
-    
-    opener=urllib2.build_opener(X509CertOpen())  
-    url = "https://cmsweb.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bystatusandtype"
+
+    opener=urllib2.build_opener(X509CertOpen())
+    if newest:
+        ## lets get todays date and get -1 year from now
+        today_str = "{d.year}-{d.month}-{d.day}".format(d=date.today())
+        today_str_split = today_str.split("-")
+        year_ago_str = "%s-%s-%s" % (int(today_str_split[0])-1, today_str_split[1], today_str_split[2])
+        year_ago_split = year_ago_str.split("-")
+
+        ##query for worflows from 1 year ago to today
+        url = "https://cmsweb.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bydate?startkey=[%s,%s,%s,0,0,0]&endkey=[%s,%s,%s,0,0,0]" % (
+            year_ago_split[0], year_ago_split[1], year_ago_split[2], today_str_split[0], today_str_split[1], today_str_split[2])
+    else:
+      ##we default to old one
+        url = "https://cmsweb.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bystatusandtype"
     datareq = urllib2.Request(url)
-    datareq.add_header('authenticated_wget', "The ultimate wgetter")  
+    datareq.add_header('authenticated_wget', "The ultimate wgetter")
     print "Getting the list of requests from %s..." %url,
-    requests_list_str=opener.open(datareq).read()  
-    print " Got it in %s Bytes"%len(requests_list_str)
+    requests_list_str=opener.open(datareq).read()
+    print " Got it in %s Bytes" % len(requests_list_str)
     data = json.loads( requests_list_str )
     ## build backward compatibility
-    req_list= map( lambda item : {"request_name" : item[0], "status" : item[1], "type" :item[2]}, map(lambda r : r['key'] , data['rows']))
-  
+    #req_list= map( lambda item : {"request_name" : item[0], "status" : item[1], "type" :item[2]}, map(lambda r : r['key'] , data['rows']))
+    if newest:
+        req_list = map(lambda x: {"request_name" : x["value"]["RequestName"], "status" : x["value"]["RequestStatus"],
+                  "type" : x["value"]["RequestType"]}, data["rows"])
+    else:
+        req_list= map( lambda item : {"request_name" : item[0], "status" : item[1],
+              "type" :item[2]}, map(lambda r : r['key'] , data['rows']))
+
+    print "total number of requests from wmstats: %s" % (len(req_list))
     return req_list
 
 def get_requests_list_old(pattern=""):
-    opener=urllib2.build_opener(X509CertOpen())  
+    opener=urllib2.build_opener(X509CertOpen())
     url="%srequestmonitor"%gm_address
     if pattern!="":
       url="%srequests?name=%s" %(gm_address,pattern)
     datareq = urllib2.Request(url)
-    datareq.add_header('authenticated_wget', "The ultimate wgetter")  
-    print "Getting the list of requests from %s..." %url,
-    requests_list_str=opener.open(datareq).read()  
+    datareq.add_header('authenticated_wget', "The ultimate wgetter")
+    print "Using get_requests_list_old. Getting the list of requests from %s..." %url,
+    requests_list_str=opener.open(datareq).read()
     print " Got it in %s Bytes"%len(requests_list_str)
-  
+
     return eval_wma_string(requests_list_str)
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 
 def get_dataset_name(reqname):
   #print "getting dataset name for %s" % reqname
-  opener=urllib2.build_opener(X509CertOpen())  
-  url="%s%s"%(req2dataset,reqname)  
-  datareq = urllib2.Request(url)  
-  datareq.add_header('authenticated_wget', "The ultimate wgetter")  
+  opener=urllib2.build_opener(X509CertOpen())
+  url="%s%s"%(req2dataset,reqname)
+  datareq = urllib2.Request(url)
+  datareq.add_header('authenticated_wget', "The ultimate wgetter")
   #print "Asking for dataset %s" %url
-  datasets_str=opener.open(datareq).read()  
+  datasets_str=opener.open(datareq).read()
   #print "-->%s<--"%datasets_str
   dataset_list=eval_wma_string(datasets_str)
   dataset=''
@@ -207,7 +237,7 @@ def get_dataset_name(reqname):
       #decision=t1[2] < t2[2]
       def tierP(t):
         tierPriority=[
-                      '/RECO', 
+                      '/RECO',
                       'SIM-RECO',
                       'DIGI-RECO',
                       'AOD',
@@ -217,7 +247,7 @@ def get_dataset_name(reqname):
                       'RAW-RECO',
                       'USER',
                       'ALCARECO']
-        
+
         for (p,tier) in enumerate(tierPriority):
           if tier in t:
             #print t,p
@@ -229,7 +259,7 @@ def get_dataset_name(reqname):
       decision=(p1> p2)
       #print t1,t2,decision
       return decision*2 -1
-                                                                                                                                                  
+
   dataset_list.sort(cmp=compareDS)
   if len(dataset_list)==0:
     dataset='None Yet'
@@ -271,13 +301,13 @@ def get_expected_events_by_output(request_name):
     return {}
 
 def get_expected_events_by_output_(request_name):
-  
+
   def get_item( i, d ):
-    if type(d)!=dict: 
+    if type(d)!=dict:
       return None
     if not d:
       return None
-    if i in d: 
+    if i in d:
       return d[i]
     else:
       for (k,v) in d.items():
@@ -290,7 +320,7 @@ def get_expected_events_by_output_(request_name):
       if not i in rl:
         rl.append(i)
     return rl
-  
+
   def get_strings( d ):
     ## retrieve all leaves that are strings
     if type(d)!=dict or not d:
@@ -310,7 +340,7 @@ def get_expected_events_by_output_(request_name):
     return {}
 
   schema = dict_from_workload_local['request']['schema']
-    
+
   if schema['RequestType'] != 'TaskChain':
     return {}
 
@@ -324,7 +354,7 @@ def get_expected_events_by_output_(request_name):
       task_map[ task['TaskName']] = k
     else:
       break
-    
+
   expectedEvents='ExpectedNumEvents'
   expectedOuputs='ExpectedOutputs'
   while not all(map( lambda d : expectedEvents in d.keys() and expectedOuputs in d.keys(), [ schema[t] for t in task_map.values()])):
@@ -362,16 +392,14 @@ def get_expected_events_by_output_(request_name):
         task[expectedOuputs] = get_strings( what['subscriptions'] )
         task['plenty'] = unique(filter(lambda s : '/' in s, get_strings( what['tree'] )))
 
-  ##pprint( schema )
-  
   expected_per_dataset={}
-  for (taskname,taski) in task_map.items():           
-    task = schema[taski]          
+  for (taskname,taski) in task_map.items():
+    task = schema[taski]
     for d in task[expectedOuputs]:
       expected_per_dataset[d] = task[expectedEvents]
-      
+
   return expected_per_dataset
-  
+
 def get_expected_events_withdict(dict_from_workload):
   if 'RequestNumEvents' in dict_from_workload['request']['schema']:
     rne=dict_from_workload['request']['schema']['RequestNumEvents']
@@ -381,14 +409,14 @@ def get_expected_events_withdict(dict_from_workload):
     rne=dict_from_workload['request']['schema']['Task1']['RequestNumEvents']
   else:
     rne=None
-    
+
   if 'FilterEfficiency' in dict_from_workload['request']['schema']:
     f=float(dict_from_workload['request']['schema']['FilterEfficiency'])
   elif 'Task1' in dict_from_workload['request']['schema'] and 'FilterEfficiency' in dict_from_workload['request']['schema']['Task1']:
     f=float(dict_from_workload['request']['schema']['Task1']['FilterEfficiency'])
   else:
     f=1.
-    
+
   if 'InputDatasets' in dict_from_workload['request']['schema']:
     try:
       ids=dict_from_workload['request']['schema']['InputDatasets'].split(',')
@@ -401,8 +429,6 @@ def get_expected_events_withdict(dict_from_workload):
       ids=dict_from_workload['request']['schema']['Task1']['InputDataset']
   else:
     ids=[]
-
-    
 
   if 'BlockWhitelist' in dict_from_workload['request']['schema']:
     try:
@@ -429,19 +455,16 @@ def get_expected_events_withdict(dict_from_workload):
       rwl=dict_from_workload['request']['schema']['Task1']['RunWhitelist']
   else:
     rwl=[]
-    
+
   return get_expected_events_withinput(rne, ids, bwl, rwl, f)
 
-  
 def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
     #wrap up
     if rne=='None' or rne==None or rne==0:
-
         s=0.
         for d in ids:
           if len(rwl):
             try:
-                print "$sss %s"%(d)
                 ret = generic_get(dbs3_url+"blocks?dataset=%s" %(d)) #returns blocks names
                 blocks= ret
             except:
@@ -471,7 +494,7 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
                     block_data = generic_get(dbs3_url+"blocksummaries?block_name=%s" %(bdbs["block_name"].replace("#","%23"))) #encode # to HTML URL
                     s += block_data[0]["num_event"]
         return s*filter_eff
-      
+
         #work from input dbs and block white list
         if len(bwl):
             s=0.
@@ -500,12 +523,12 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
     else:
         return rne
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 ## methods to format a date from ReqMngr workload date lien
 def timelist_to_str(timelist):
   (h,m,s)=map(int,timelist)[3:]
   return "%02d%02d%02d"%(h,m,s)
-  
+
 def datelist_to_str(datelist):
   year=str(datelist[0])[2:]
   month=str(datelist[1])
@@ -517,20 +540,20 @@ def datelist_to_str(datelist):
   datestr="%s%s%s"%(year,month,day)
   return datestr
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 
-def get_running_days(raw_date): 
+def get_running_days(raw_date):
   try:
-    now=datetime.datetime.now()  
+    now=datetime.datetime.now()
     yy=int(raw_date[0:2])
     mm=int(raw_date[2:4])
     dd=int(raw_date[4:6])
-    then=datetime.datetime(int("20%s"%yy),mm,dd,0,0,0)  
+    then=datetime.datetime(int("20%s"%yy),mm,dd,0,0,0)
     return int((now-then).days)
   except:
     return -1
-  
-#------------------------------------------------------------------------------- 
+
+#-------------------------------------------------------------------------------
 
 def get_campaign_from_prepid(prepid):
   try:
@@ -538,19 +561,19 @@ def get_campaign_from_prepid(prepid):
   except:
     return "ByHand"
 
-#-------------------------------------------------------------------------------   
-
+#-------------------------------------------------------------------------------
+@timer
 def get_status_nevts_from_dbs(dataset):
 
   print "You Loose 10CHF antanas"
-  
+
   undefined=(None,0,0)
   debug=False
   if dataset=='None Yet':
     return undefined
   if dataset=='?':
     return undefined
-  
+
   if debug : print "Querying DBS"
 
   total_evts=0
@@ -559,6 +582,7 @@ def get_status_nevts_from_dbs(dataset):
   if debug:    print "load"
   if debug:    print "instance"
   if debug:    print "blocks"
+
   try:
     ret = generic_get(dbs3_url+"blocks?dataset=%s&detail=true" %(dataset))
     blocks = ret
@@ -569,9 +593,11 @@ def get_status_nevts_from_dbs(dataset):
     blocks = []
     return undefined
 
+  print "##DEBUG## blocks len: %s" % (len(blocks))
   for b in blocks:
     if debug:    print b
     if b["open_for_writing"] == 0: #lame DAS format: block info in a single object in list ????
+        ###TO-DO re-use existing connection!
         ret = generic_get(dbs3_url+"blocksummaries?block_name=%s" %(b["block_name"].replace("#","%23")))
         data = ret
         total_evts+=data[0]["num_event"]
@@ -598,25 +624,26 @@ def get_status_nevts_from_dbs(dataset):
   #print (status,total_evts,total_open)
   return (status,total_evts,total_open)
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
+
 def get_running_jobs(req):
   key="Running"
   nrunning = 0
   if req.has_key(key):
     nrunning = req[key]
-  
+
   return nrunning
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 
-def get_pending_jobs(req):  
+def get_pending_jobs(req):
   key = "Pending"
   bsubmitted=0
   if req.has_key(key):
     bsubmitted = req[key]
   return bsubmitted
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 
 def get_all_jobs(req):
   key="running"
@@ -625,7 +652,7 @@ def get_all_jobs(req):
     all_jobs = req[key]
   return all_jobs
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 def calc_eta(level, running_days):
   flevel=float(level)
   irunning_days=int(running_days)
@@ -639,7 +666,7 @@ def calc_eta(level, running_days):
   eta = total_days-running_days
   return round(eta+0.5)
 
-#------------------------------------------------------------------------------- 
+#-------------------------------------------------------------------------------
 
 def getDictFromWorkload(req_name, attributes=['request','constraints']):
 
@@ -660,6 +687,7 @@ def getDictFromWorkload(req_name, attributes=['request','constraints']):
 numberofrequestnameprocessed=0
 countOld=0
 
+@timer
 def parallel_test(arguments, force=False):
   DEBUGME=False
   global countOld
@@ -669,9 +697,8 @@ def parallel_test(arguments, force=False):
     global numberofrequestnameprocessed
     #print  "doing ",req["request_name"],numberofrequestnameprocessed
     numberofrequestnameprocessed+=1
-    
-    pdmv_request_dict={}    
-    
+
+    pdmv_request_dict={}
 
     if DEBUGME: print "-"
     ##faking announced status
@@ -700,7 +727,7 @@ def parallel_test(arguments, force=False):
 
     phedexObj=None
     phedexObjInput=None
-    
+
     #allowSkippingOnRandom=0.1
     allowSkippingOnRandom=None
 
@@ -730,7 +757,7 @@ def parallel_test(arguments, force=False):
       if pdmv_request_dict["pdmv_status_from_reqmngr"]!=req_status and req_status!="normal-archived":
         print "CHANGE OF STATUS, do something !"
         skewed=True
-        
+
       if 'pdmv_monitor_time' in pdmv_request_dict:
         up=time.mktime(time.strptime(pdmv_request_dict['pdmv_monitor_time']))
         now=time.mktime(time.gmtime())
@@ -749,13 +776,13 @@ def parallel_test(arguments, force=False):
 
       if not 'pdmv_monitor_time' in pdmv_request_dict:
         skewed=True
-        
+
       ##known bad status
       for bad in []:#'JME-Summer12_DR53X-00098','JME-Summer12_DR53X-00097','vlimant_Run2012']:
         if bad in req_name:
           skewed=True
           break
-        
+
       #if not 'pdmv_open_evts_in_DAS' in pdmv_request_dict or pdmv_request_dict['pdmv_open_evts_in_DAS']<0 : skewed=True
 
       #add that field after the fact
@@ -771,7 +798,7 @@ def parallel_test(arguments, force=False):
 
       if 'pdmv_status_in_DAS' in pdmv_request_dict and not pdmv_request_dict['pdmv_status_in_DAS'] in ['VALID','PRODUCTION']:
         needsToBeUsed=False
-        
+
       if not needsToBeUsed:
         print "not doing phedex call"
 
@@ -783,7 +810,7 @@ def parallel_test(arguments, force=False):
 
       if not force:
         noSites=False
-        
+
       if noSites and needsToBeUsed and (not 'pdmv_at_T2' in pdmv_request_dict or pdmv_request_dict['pdmv_at_T2']==[]):
         if not phedexObj:
           phedexObj=phedex(pdmv_request_dict["pdmv_dataset_name"])
@@ -813,11 +840,9 @@ def parallel_test(arguments, force=False):
         if not phedexObj:
           phedexObj=phedex(pdmv_request_dict["pdmv_dataset_name"])
         pdmv_request_dict['pdmv_custodial_sites']=custodials(phedexObj)
-          
-        
+
       if not 'pdmv_open_evts_in_DAS' in pdmv_request_dict:
         pdmv_request_dict['pdmv_open_evts_in_DAS']=0
-        
 
       if 'amaltaro' in req_name and ('type' in req and req['type'] == 'TaskChain'):
         skewed=False
@@ -861,7 +886,7 @@ def parallel_test(arguments, force=False):
       ##load it on demand only
       if not dict_from_workload: dict_from_workload=getDictFromWorkload(req_name)
       if not dict_from_workload: return {}
-      
+
       pdmv_request_dict["pdmv_submission_date"]=datelist_to_str(dict_from_workload['request']['schema']['RequestDate'])
       pdmv_request_dict["pdmv_submission_time"]=timelist_to_str(dict_from_workload['request']['schema']['RequestDate'])
       if DEBUGME: print "----"
@@ -870,24 +895,24 @@ def parallel_test(arguments, force=False):
         return {}
 
 
-    if DEBUGME: print "-----"      
+    if DEBUGME: print "-----"
     ##put an update time in the json
-    
+
     # the request itself!
-    pdmv_request_dict["pdmv_request"]=req        
-    
+    pdmv_request_dict["pdmv_request"]=req
+
     # check the status
     req_status=req["status"]
     pdmv_request_dict["pdmv_status_from_reqmngr"]=req_status
-    
+
     if req_status in priority_changable_stati:
       pdmv_request_dict["pdmv_status"]="ch_prio"
     else:
       pdmv_request_dict["pdmv_status"]="fix_prio"
 
     #request type
-    pdmv_request_dict['pdmv_type']=req["type"]        
-    if DEBUGME: print "------"      
+    pdmv_request_dict['pdmv_type']=req["type"]
+    if DEBUGME: print "------"
     # number of running days
     if pdmv_request_dict["pdmv_status_from_reqmngr"].startswith('running'):
       #set only when the requests is in running mode, not anytime after
@@ -895,16 +920,16 @@ def parallel_test(arguments, force=False):
     elif not "pdmv_running_days" in pdmv_request_dict:
       pdmv_request_dict["pdmv_running_days"]=0
 
-    if DEBUGME: print "-------"      
+    if DEBUGME: print "-------"
     # get the running jobs
-    pdmv_request_dict["pdmv_all_jobs"]=get_all_jobs(req)        
-        
+    pdmv_request_dict["pdmv_all_jobs"]=get_all_jobs(req)
+
     # get the running jobs
     pdmv_request_dict["pdmv_running_jobs"]=get_running_jobs(req)
-    
+
     # get the jobs pending in the batch systems
     pdmv_request_dict["pdmv_pending_jobs"]=get_pending_jobs(req)
-    
+
     # get Extras --> slow down---------------
 
     raw_expected_evts=None
@@ -953,19 +978,19 @@ def parallel_test(arguments, force=False):
       retrievePriority=True
     if pdmv_request_dict['pdmv_status_from_reqmngr'] in priority_changable_stati+['acquired','running','running-open','running-closed']:
       retrievePriority=True
-    
+
     if retrievePriority:
       if not dict_from_workload: dict_from_workload=getDictFromWorkload(req_name)
       if not dict_from_workload: return {}
-      
+
       pdmv_request_dict["pdmv_priority"]=dict_from_workload['request']['schema']['RequestPriority']
-      if DEBUGME: print "----------"      
+      if DEBUGME: print "----------"
       # Present priority
       pdmv_request_dict["pdmv_present_priority"]=dict_from_workload['request']['priority']
-    
-    if DEBUGME: print "-----------"      
+
+    if DEBUGME: print "-----------"
     #------------------------------------------
-    
+
     # Query yet another service to get the das entry of the prepid
     ## try and reduce the number of calls to get_dataset_name url
     dataset_name="None Yet"
@@ -990,14 +1015,14 @@ def parallel_test(arguments, force=False):
 
     if req_status in priority_changable_stati:
       makedsnquery=False
-            
+
     #print makedsnquery
     try:
       if makedsnquery:
         dataset_name,dataset_list=get_dataset_name(pdmv_request_dict["pdmv_request_name"])
     except:
       pass
-    
+
     pdmv_request_dict["pdmv_dataset_name"]=dataset_name
     pdmv_request_dict["pdmv_dataset_list"]=dataset_list
 
@@ -1012,7 +1037,7 @@ def parallel_test(arguments, force=False):
       deltaUpdate = (now-up) / (60. * 60. * 24.)
     else:
       pdmv_request_dict["pdmv_monitor_time"]=time.asctime()
-      
+
     #if allowSkippingOnRandom!=None or random.random() > 0.0 or
     if deltaUpdate > 2. or DEBUGME or force or pdmv_request_dict['pdmv_status_from_reqmngr'].startswith('running') or skewed:
       #do the expensive procedure rarely or for request which have been update more than 2 days ago
@@ -1030,7 +1055,7 @@ def parallel_test(arguments, force=False):
           'pdmv_evts_in_DAS' : other_evts,
           'pdmv_open_evts_in_DAS' : other_openN
           }
-          
+
       if status:
         print "\t\tUpdating %s %s %s"%( status,evts,openN )
         pdmv_request_dict["pdmv_status_in_DAS"]=status
@@ -1069,31 +1094,30 @@ def parallel_test(arguments, force=False):
 
       if not dict_from_workload: dict_from_workload=getDictFromWorkload(req_name)
       if not dict_from_workload: return {}
-      
+
       raw_expected_evts=get_expected_events_withdict( dict_from_workload )
-      if DEBUGME: print "--------"      
+      if DEBUGME: print "--------"
       #if DEBUGME: print "Expected are %s"%raw_expected_evts
-    
-      # get the expected number of evts    
+
+      # get the expected number of evts
       expected_evts=-1
       if raw_expected_evts==None or raw_expected_evts=='None':
         expected_evts=-1
       else:
         expected_evts=int(raw_expected_evts)
-      if DEBUGME: print "---------"      
+      if DEBUGME: print "---------"
       pdmv_request_dict["pdmv_expected_events"]=expected_evts
       ## get an expected per output dataset if possible
       pdmv_request_dict['pdmv_expected_events_per_ds'] = get_expected_events_by_output( req_name )
 
       #print pdmv_request_dict["pdmv_expected_events"]
 
-      
     completion=0
     if  pdmv_request_dict["pdmv_expected_events"]>0.:
       completion=100*(float(pdmv_request_dict["pdmv_evts_in_DAS"])+float(pdmv_request_dict["pdmv_open_evts_in_DAS"]))/pdmv_request_dict["pdmv_expected_events"]
     #pdmv_request_dict["pdmv_completion_in_DAS"]="%2.2f" %completion
     pdmv_request_dict["pdmv_completion_in_DAS"]=float("%2.2f" %completion)
-    if DEBUGME: print "----------"      
+    if DEBUGME: print "----------"
     pdmv_request_dict["pdmv_completion_eta_in_DAS"]=calc_eta(pdmv_request_dict["pdmv_completion_in_DAS"],pdmv_request_dict["pdmv_running_days"])
 
 
@@ -1124,7 +1148,7 @@ def parallel_test(arguments, force=False):
       if pdmv_request_dict['pdmv_status_in_DAS']:
         if not phedexObj:
           phedexObj=phedex(pdmv_request_dict["pdmv_dataset_name"])
-          pdmv_request_dict['pdmv_custodial_sites']=custodials(phedexObj)        
+          pdmv_request_dict['pdmv_custodial_sites']=custodials(phedexObj)
 
           if pdmv_request_dict['pdmv_custodial_sites']==[]:
             pdmv_request_dict['pdmv_custodial_sites']=filter(lambda s : s.startswith('T1_'), sites)
@@ -1136,7 +1160,7 @@ def parallel_test(arguments, force=False):
     for eachTier in notNeededByUSers:
       if pdmv_request_dict["pdmv_dataset_name"].endswith(eachTier):
         needsToBeUsed=False
-                  
+
     noSites=True
     if 'pdmv_at_T2' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T2']):
       #print len(pdmv_request_dict['pdmv_at_T2'])
@@ -1169,7 +1193,7 @@ def parallel_test(arguments, force=False):
       pdmv_request_dict['pdmv_performance']=Performances(req_name)
     #else:
     #  print pdmv_request_dict['pdmv_performance']
-    
+
     return pdmv_request_dict
 
   except:
@@ -1180,12 +1204,12 @@ def parallel_test(arguments, force=False):
     tr=open(trf,'w')
     tr.write(traceback.format_exc())
     tr.close()
-    
+
     ##could be failing on certificate issue and we truncate/loose all info of subsequent requests
     ## try to get info of a know request, just to fail on certificat for real, outside the try...
     ##if that fails, it's because of server or certificate, and will make the whole thing fail, rather than going on quietly
     from TransformRequestIntoDict import TransformRequestIntoDict
     #dict_from_workload=TransformRequestIntoDict( 'etorassa_EXO-Summer12_DR52X-00109_T1_US_FNAL_MSS_batch15_v1__120426_182026_2934' , ['request'], True )
     dict_from_workload=TransformRequestIntoDict( 'pdmvserv_HIG-Summer11pLHE-00079_00009_v0_STEP0ATCERN_131205_120245_8592' , ['request'], True )
-    
+
     return {}

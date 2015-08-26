@@ -12,6 +12,8 @@ import os
 import sys
 
 from couchDB import Interface
+from statsMonitoring import datelist_to_str
+from datetime import date
 
 FORCE=False
 
@@ -29,7 +31,7 @@ def insertAll(req_list,docs,pattern=None,limit=None):
         if pattern and not pattern in docid:            continue
         ## to limit things a bit
         if limit and newentries>=limit:    break
-        
+
         #print docid,"is not in the stats cache yet"
         if insertOne(req):
             newentries+=1
@@ -53,7 +55,7 @@ def worthTheUpdate(new,old):
     ##make a tighter selection on when to update in couchDB to not overblow it with 2 update per hour ...
     global FORCE
     global countOld
-    if FORCE: 
+    if FORCE:
         return True
 
     if old['pdmv_evts_in_DAS']!=new['pdmv_evts_in_DAS']:
@@ -69,7 +71,6 @@ def worthTheUpdate(new,old):
     if set(old['pdmv_at_T3'])!=set(new['pdmv_at_T3']):
         return True
 
-    
     if old!=new:
         ## what about monitor time ???? that is different ?
         if set(old.keys())!=set(new.keys()):
@@ -87,7 +88,7 @@ def worthTheUpdate(new,old):
             return True
         if ('pdmv_at_T3' in old and 'pdmv_at_T3' in new) and (set(old['pdmv_at_T3']) != set(new['pdmv_at_T3']) ):
             return True
-                
+
         n_more=(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])-(old['pdmv_evts_in_DAS']+old['pdmv_open_evts_in_DAS'])
         n_tot=float(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])
         f_more=-1
@@ -139,7 +140,10 @@ def compare_dictionaries(dict1, dict2):
      except:
          return False
 
-def updateOne(docid,req_list):
+def updateOne(docid, req_list):
+    if "dmason" in docid:
+        print "Its a dmason request: %s" % (docid)
+        return False
     global statsCouch
     match_req_list=filter (lambda r: r["request_name"]==docid, req_list)
     try:
@@ -147,7 +151,20 @@ def updateOne(docid,req_list):
     except:
         print "There was an access crash with",docid
         return False
-    
+
+    today_str = "{d.year}-{d.month}-{d.day}".format(d=date.today())
+    today_str_split = today_str.split("-")
+    year_ago_str = "%s-%s-%s" % (int(today_str_split[0])-1, today_str_split[1], today_str_split[2])
+    year_ago_split = year_ago_str.split("-")
+    print "Working on: %s" % (docid)
+    try:
+        if int(thisDoc["pdmv_submission_date"]) < int(datelist_to_str(year_ago_split)):
+            print "Document: %s is too old (> 1year) to be updated" % (docid)
+            return False
+    except Exception as ex:
+        print "issues with: %s" % (docid)
+        raise ValueError("issues with converting submission_date to int: %s" % (docid))
+
     updatedDoc=copy.deepcopy(thisDoc)
     if not len(match_req_list):
         ## when there is a fake requests in stats.
@@ -217,7 +234,7 @@ def updateOne(docid,req_list):
 def updateOneIt(arguments):
     docid,req_list = arguments
     return updateOne(docid,req_list)
-    
+
 def updateSeveral(docs,req_list,pattern=None):
     for docid in docs:
         if pattern and not pattern in docid:
@@ -277,7 +294,7 @@ def main():
                       default=False,
                       help="Prevent two from running at the same time",
                       action="store_true")
-    
+
     options,args=parser.parse_args()
 
     return main_do( options )
@@ -285,6 +302,7 @@ def main():
 def main_do( options ):
 
     if options.check:
+        #we check if this script is already running with same parameters#
         checks=['ps -f -u $USER']
         for arg in sys.argv[1:]:
             checks.append('grep "%s"'%(arg.split('/')[-1].replace('--','')))
@@ -297,11 +315,11 @@ def main_do( options ):
             sys.exit(1)
         else:
             print "ok to operate"
-    
+
     start_time = time.asctime()
-    global statsCouch,docs,FORCE
+    global statsCouch, docs, FORCE
     #interface to the couchDB
-    statsCouch=Interface(options.db+':5984/stats')
+    statsCouch = Interface(options.db+':5984/stats')
 
 
     ## get from stats couch the list of requests
@@ -312,18 +330,18 @@ def main_do( options ):
     docs = filter(lambda doc : not doc.startswith('_'), docs)
     print "... done"
 
-    nproc=5
-    limit=None
+    nproc = 5
+    limit = None
     if options.test:
-        limit=10
-        
+        limit = 10
+
     if options.do == 'insert':
         ## get from wm couch
         from statsMonitoring import parallel_test,get_requests_list
         print "Getting all req ..."
         req_list = get_requests_list()
         print "... done"
-        
+
         ## insert new requests, not already in stats couch into stats couch
         #insertAll(req_list,docs,options.search,limit)
 
@@ -334,34 +352,34 @@ def main_do( options ):
         #skip malformated ones
         req_list = filter( lambda req : "status" in req, req_list )
         #print len(req_list)
-        
+
         #take only the ones not already in there
         req_list = filter( lambda req : req["request_name"] not in docs, req_list )
         #print len(req_list)
-            
+
         #skip trying to insert aborted and rejected or failed
         #req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed','aborted-archived','rejected-archived','failed-archived'], req_list )
         req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed'], req_list )
         #print len(req_list)
-            
+
         #do not update TaskChain request statuses
         #req_list = filter( lambda req : 'type' in req and req['type']!='TaskChain', req_list)
         #print len(req_list)
 
-        pprint.pprint( req_list)
-            
+        pprint.pprint(req_list)
+
         if limit:
             req_list = req_list[0:limit]
             #print len(req_list)
-            
-        newentries=0
-        print "Dispaching",len(req_list),"requests to",str(nproc),"processes..."
+
+        newentries = 0
+        print "Dispaching", len(req_list), "requests to", str(nproc), "processes..."
         pool = multiprocessing.Pool(nproc)
-        results=pool.map( insertOne, req_list )
+        results = pool.map(insertOne, req_list)
         print "End dispatching!"
 
-        results=filter( lambda item : item!=False, results)
-        print len(results),"inserted"
+        results = filter(lambda item : item != False, results)
+        print len(results), "inserted"
         print str(results)
         """
         showme=''
@@ -372,75 +390,81 @@ def main_do( options ):
     elif options.do =='kill' or options.do =='list' :
         ## get from wm couch
         from statsMonitoring import parallel_test,get_requests_list
-        print "Getting all req ..."        
+        print "Getting all req ..."
         req_list = get_requests_list()
         print "... done"
 
-        removed=[]
+        removed = []
         if options.search:
-            req_list=filter( lambda req : options.search in req["request_name"], req_list)
+            req_list = filter(lambda req : options.search in req["request_name"], req_list)
             for r in req_list:
-                print "Found",r['request_name'],"in status",(r['status'] if 'status' in r else 'undef'),"?"
-                if options.do =='kill':
+                print "Found", r['request_name'], "in status", (r['status'] if 'status' in r else 'undef'), "?"
+                if options.do == 'kill':
                     #print "killing",r['request_name'],"in status",(r['status'] if 'status' in r else 'undef'),"?"
-                    docid=r['request_name']
+                    docid = r['request_name']
                     if docid in docs and not docid in removed:
-                        thisDoc=statsCouch.get_file_info(docid)
+                        thisDoc = statsCouch.get_file_info(docid)
                         print "removing record for docid"
-                        statsCouch.delete_file_info(docid,thisDoc['_rev'])
+                        statsCouch.delete_file_info(docid, thisDoc['_rev'])
                         removed.append(docid)
                     else:
                         print "nothing to kill"
-                
+
     elif options.do == 'update':
+        __newest = True
+        if options.search:
+            __newest = False
         ## get from wm couch
         from statsMonitoring import parallel_test,get_requests_list
         print "Getting all req ..."
-        req_list = get_requests_list( not_in_wmstats = options.nowmstats)
+        req_list = get_requests_list(not_in_wmstats=options.nowmstats, newest=__newest)
         print "... done"
-        
+
         ## unthreaded
         #updateSeveral(docs,req_list,pattern=None)
 
         if options.mcm:
             sys.path.append('/afs/cern.ch/cms/PPD/PdmV/tools/McM/')
             from rest import restful
-            mcm = restful(dev=False,cookie='/afs/cern.ch/user/p/pdmvserv/private/prod-cookie.txt')
+            mcm = restful(dev=False, cookie='/afs/cern.ch/user/p/pdmvserv/private/prod-cookie.txt')
             rs = mcm.getA('requests', query='status=submitted')
             rids = map(lambda d : d['prepid'], rs)
 
-            print "Got",len(rids),"to update from mcm"
+            print "Got", len(rids), "to update from mcm"
             #print len(docs),len(req_list)
             #print map( lambda docid : any( map(lambda rid : rid in doc, rids)), docs)
-            docs=filter( lambda docid : any( map(lambda rid : rid in docid, rids)), docs)
+            docs = filter(lambda docid : any(map(lambda rid : rid in docid, rids)), docs)
             if not len(docs):
-                req_list=filter( lambda req : any( map(lambda rid : rid in req["request_name"], rids)), req_list)
+                req_list = filter(lambda req : any(map(lambda rid : rid in req["request_name"], rids)), req_list)
 
         if options.search:
             if options.force:
-                FORCE=True
-            docs=filter( lambda docid : options.search in docid, docs)
+                FORCE = True
+            docs = filter(lambda docid : options.search in docid, docs)
             if not len(docs):
-                req_list=filter( lambda req : options.search in req["request_name"], req_list)
+                req_list = filter(lambda req : options.search in req["request_name"], req_list)
                 if len(req_list):
                     pprint.pprint(req_list)
         if limit:
             docs = docs[0:limit]
-            
-        repeated_req_list = itertools.repeat( req_list , len(docs) )
-        print "Dispaching",len(docs),"requests to ",str(nproc),"processes..."
+
+
+        repeated_req_list = itertools.repeat(req_list, len(docs))
+
+        print "##DEBUG data:\n%s" % (docs.__class__)
+        print "Dispaching", len(docs), "requests to ", str(nproc), "processes..."
         pool = multiprocessing.Pool(nproc)
-        results=pool.map( updateOneIt, itertools.izip( docs, repeated_req_list ) )
+        results = pool.map(updateOneIt, itertools.izip(docs, repeated_req_list))
 
         print "End dispatching!"
 
         if options.search:
-            dump=dumpSome(docs,limit)
+            dump = dumpSome(docs, limit)
             print "Result from update with search"
             pprint.pprint(dump)
-            
-        results=filter( lambda item : item!=False, results)
-        print len(results),"updated"
+
+        results = filter( lambda item : item != False, results)
+        print len(results), "updated"
         print results
 
         print "\n\n"
@@ -448,11 +472,11 @@ def main_do( options ):
         from growth import plotGrowth
         for r in results:
             try:
-                withRevisions=statsCouch.get_file_info_withrev(r)
+                withRevisions = statsCouch.get_file_info_withrev(r)
                 plotGrowth(withRevisions,statsCouch,force=FORCE)
                 ## notify McM for update !!
                 if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found','','None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
-                    inspect='curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
+                    inspect = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
                     os.system(inspect)
                 ## he we should trigger McM update if request is in done.
                 ## because inspection on done doesn't exists.
@@ -467,7 +491,7 @@ def main_do( options ):
 
                     os.system(update_comm)
             except:
-                print "failed to update growth for",r
+                print "failed to update growth for", r
                 print traceback.format_exc()
 
 
@@ -475,8 +499,8 @@ def main_do( options ):
         ## set in the log file
         #serves as forceupdated !
         print "start time: ", start_time
-        print "logging updating time:",time.asctime()
-        l=open('stats.log','a')
+        print "logging updating time:", time.asctime()
+        l = open('stats.log','a')
         l.write(time.asctime()+'\n')
         l.close()
 
