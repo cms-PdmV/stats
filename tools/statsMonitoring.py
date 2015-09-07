@@ -993,33 +993,35 @@ def parallel_test(arguments, force=False):
 
     # Query yet another service to get the das entry of the prepid
     ## try and reduce the number of calls to get_dataset_name url
-    dataset_name="None Yet"
-    dataset_list=[]
+    dataset_name = "None Yet"
+    dataset_list = []
     if 'pdmv_dataset_name' in pdmv_request_dict:
-      dataset_name=pdmv_request_dict["pdmv_dataset_name"]
+      dataset_name = pdmv_request_dict["pdmv_dataset_name"]
     if 'pdmv_dataset_list' in pdmv_request_dict:
-      dataset_list=pdmv_request_dict['pdmv_dataset_list']
+      dataset_list = pdmv_request_dict['pdmv_dataset_list']
 
       #print "Already know as",dataset_name
-    makedsnquery=False
+    makedsnquery = False
     if (not 'pdmv_dataset_name' in pdmv_request_dict):
-      makedsnquery=True
+      makedsnquery = True
     if 'pdmv_dataset_name' in pdmv_request_dict and (pdmv_request_dict["pdmv_dataset_name"] in ['?','None Yet'] or 'None-' in pdmv_request_dict["pdmv_dataset_name"] or '24Aug2012' in pdmv_request_dict["pdmv_dataset_name"]):
-      makedsnquery=True
+      makedsnquery = True
 
     if 'pdmv_dataset_list' in pdmv_request_dict and not pdmv_request_dict['pdmv_dataset_list']:
-      makedsnquery=True
+      makedsnquery = True
 
     if force:
-      makedsnquery=True
+      makedsnquery = True
 
     if req_status in priority_changable_stati:
-      makedsnquery=False
+      makedsnquery = False
 
-    #print makedsnquery
+    if req_status == "assigned":
+      makedsnquery = True
+
     try:
       if makedsnquery:
-        dataset_name,dataset_list=get_dataset_name(pdmv_request_dict["pdmv_request_name"])
+        dataset_name, dataset_list = get_dataset_name(pdmv_request_dict["pdmv_request_name"])
     except:
       pass
 
@@ -1194,6 +1196,7 @@ def parallel_test(arguments, force=False):
     #else:
     #  print pdmv_request_dict['pdmv_performance']
 
+    print "#numebr of processed: %s" % (numberofrequestnameprocessed)
     return pdmv_request_dict
 
   except:
