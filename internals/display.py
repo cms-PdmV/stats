@@ -83,7 +83,7 @@ class Simulation(object):
                 __growthurl = os.path.join(__dirname, __filename)
                 #String = String + "<td>" + '<a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/' + self.Attributs["PDMV request name"] + '">' + self.Attributs["PDMV request name"] + "</a></td>"
                 #String = String + "<td>"+ '<a href="https://cmsweb.cern.ch/reqmgr/view/details/'+self.Attributs["PDMV request name"] + '"> details </a>' + '<a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/'+ self.Attributs["PDMV request name"] + '">' + self.Attributs["PDMV request name"]+"</a> </td>"
-                String = String + '<td><a href="https://cmsweb.cern.ch/reqmgr/view/details/%s">details</a> <a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/%s"> %s </a> <a href=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif target=_blank><img src=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif alt="" width=100></a> </td>'%(self.Attributs["PDMV request name"],
+                String = String + '<td><a href="https://cmsweb.cern.ch/reqmgr2/fetch?rid=%s">details</a> <a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/%s"> %s </a> <a href=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif target=_blank><img src=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif alt="" width=100></a> </td>'%(self.Attributs["PDMV request name"],
                     self.Attributs["PDMV request name"],
                     self.Attributs["PDMV request name"],
                     __growthurl,
