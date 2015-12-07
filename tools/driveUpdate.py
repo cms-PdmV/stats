@@ -281,7 +281,7 @@ def main():
                       choices=['update','insert','kill','list'],
                       )
     parser.add_option("--db",
-                      default="http://cms-pdmv-stats.cern.ch")
+                      default="http://vocms084.cern.ch")
     parser.add_option("--mcm",
                       default=False,
                       help="drives the update from submitted requests in McM",

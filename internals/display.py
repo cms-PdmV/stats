@@ -308,9 +308,9 @@ class HomePage(object):
             SortValue = ""
         __page_offset = (Page-1)*ResToPrint
         if len(ListSearch) != 0:
-            number_of_results = Initializer().Actualization('_fti/_design/lucene/search?q='+__query.finalize_query(ResToPrint, Page, SortValue, Order)+'&include_docs=true')
+            number_of_results = Initializer().Actualization('_fti/local/stats/_design/lucene/search?q='+__query.finalize_query(ResToPrint, Page, SortValue, Order)+'&include_docs=true')
         else:
-            number_of_results = Initializer().Actualization('_all_docs?include_docs=true&skip=%s&limit=%s' %(__page_offset, ResToPrint))
+            number_of_results = Initializer().Actualization('stats/_all_docs?include_docs=true&skip=%s&limit=%s' %(__page_offset, ResToPrint))
         try :
             """
             if(len(ListOfS) > 0):
@@ -360,7 +360,7 @@ class HomePage(object):
             ListTemp = list(ListOfSimulations) #list of data
             #Lets get statistical data for graphs!
             if len(ListSearch) != 0:
-                __url = 'http://cms-pdmv-stats:5984/stats/' + '_fti/_design/lucene/search?q=' + __query.graph_query(SortValue, Order) + '&limit=100000'
+                __url = 'http://vocms084.cern.ch:5984/' + '_fti/local/stats/_design/lucene/search?q=' + __query.graph_query(SortValue, Order) + '&limit=100000'
                 print __url
                 dbData = urllib2.urlopen(__url)
                 __stats_data = [elem["fields"] for elem in json.loads(dbData.read())["rows"]]
@@ -963,7 +963,7 @@ class Initializer(object):
             ### NEW super cool stuff
             ##go to view to get data with params!
             print "##DB_QUERY: %s" %(db_query)
-            dbData = urllib2.urlopen('http://cms-pdmv-stats:5984/stats/'+db_query)
+            dbData = urllib2.urlopen('http://vocms084.cern.ch:5984/'+db_query)
             data = json.loads(dbData.read())
             n_results = data['total_rows']
             print "Found %s result(-s)"%(data['total_rows'])

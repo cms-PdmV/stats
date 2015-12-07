@@ -31,7 +31,7 @@ def manualUpdate():
     
 @cherrypy.expose
 def getAllDocs():
-    f = urllib2.urlopen('http://cms-pdmv-stats:5984/stats/_all_docs')
+    f = urllib2.urlopen('http://vocms084.cern.ch:5984/stats/_all_docs')
     data = f.read()
     return data
 

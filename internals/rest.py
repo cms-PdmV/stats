@@ -28,7 +28,7 @@ class GetOne(RestIndex):
     def GET(self, *args):
         if not args:
             return dumps("No argument given")
-        f = urllib2.urlopen('http://cms-pdmv-stats:5984/stats/%s'%( args[0] ))
+        f = urllib2.urlopen('http://vocms084.cern.ch:5984/stats/%s'%( args[0] ))
         data = f.read()
         return data
 
@@ -38,13 +38,13 @@ class ProducesDN(RestIndex):
     def GET(self, *args):
         #data = [args[0],args[1]]
         __dname = "/".join(args)
-        f = urllib2.urlopen('http://cms-pdmv-stats:5984/stats/_fti/_design/lucene/search?q=DN:/%s&include_docs=true' %(__dname))
+        f = urllib2.urlopen('http://vocms084.cern.ch:5984/_fti/local/stats/_design/lucene/search?q=DN:/%s&include_docs=true' %(__dname))
         data = f.read()
         return data
 
 class searchOption(object):
     def __init__(self, search):
-        self.db = 'http://cms-pdmv-stats.cern.ch'
+        self.db = 'http://vocms084.cern.ch'
         self.do = 'update'
         self.force = True
         self.search = search
@@ -57,7 +57,7 @@ class UpdateOne(RestIndex):
     def GET(self, *args):
         if not args:
             return dumps("No argument given")
-        #f = urllib2.urlopen('http://cms-pdmv-stats:5984/stats/%s'%( args[0] ))
+        #f = urllib2.urlopen('http://vocms084.cern.ch:5984/stats/%s'%( args[0] ))
         #data = f.read()
         
         #from DBSAPI.dbsApi import DbsApi
@@ -72,7 +72,7 @@ class UpdateOne(RestIndex):
         print "Done and moving along"
         
         ## get the data, now that it updated 
-        f = urllib2.urlopen('http://cms-pdmv-stats:5984/stats/%s'%( args[0] ))
+        f = urllib2.urlopen('http://vocms084.cern.ch:5984/stats/%s'%( args[0] ))
         data = f.read()
         
         return data 
