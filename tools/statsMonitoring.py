@@ -1,25 +1,10 @@
 #! /usr/bin/env python
 
-# A bunch of clob variables
-
-# Old Global Monitor
-#gm_address="https://reqmon-dev02.cern.ch/reqmgr/monitorSvc/"
-#gm_address="https://vocms204.cern.ch/reqmgr/monitorSvc/"
-#couch_address="https://cmsweb.cern.ch/couchdb/reqmgr_workload_cache/"
-#req2dataset="https://cmsweb.cern.ch/reqmgr/reqMgr/outputDatasetsByRequestName/"
-request_detail_address="https://cmsweb.cern.ch/reqmgr/view/showWorkload?requestName="
-#das_host = 'https://cmsweb.cern.ch'
-das_host = 'https://das.cern.ch/das'
-runStats_address = 'https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/'
 #dbs3_url = 'https://cmsweb.cern.ch/dbs/prod/global/DBSReader/'
-couch_address = "https://cmsweb-testbed.cern.ch/couchdb/reqmgr_workload_cache/"
-req2dataset="https://cmsweb-testbed.cern.ch/reqmgr/reqMgr/outputDatasetsByRequestName/"
 dbs3_url = 'https://cmsweb-testbed.cern.ch/dbs/int/global/DBSReader/'
 rqmgr2_url = 'https://cmsweb-testbed.cern.ch/reqmgr2/data/request'
 
-
 #-------------------------------------------------------------------------------
-import shutil
 import sys
 
 req_version = (2,6)
@@ -34,19 +19,14 @@ if cur_version < req_version:
 import os
 import httplib
 import urllib2
-import urllib
 import time
 import datetime
-import commands
-import re
-import multiprocessing
-import itertools
 import random
 import json
 
-from datetime import date
 from phedex import phedex, runningSites, custodials, atT2, atT3
 
+##define global variables
 # Collect all the requests which are in one of these stati which allow for
 priority_changable_stati = ['new','assignment-approved']
 skippable_stati = ["rejected", "aborted", "failed", "rejected-archived",
@@ -134,16 +114,13 @@ def eval_wma_string(string):
 def generic_get(url, do_eval=True):
     opener = urllib2.build_opener(X509CertOpen())
     datareq = urllib2.Request(url)
+
     datareq.add_header('Accept', 'application/json')
-
-    print datareq.get_full_url()
-    print datareq.header_items()
     datareq.add_header('authenticated_wget', "The ultimate wgetter")
-    print "Getting material from %s" %url,
-    requests_list_str = opener.open(datareq).read()
 
+    requests_list_str = opener.open(datareq).read()
     ret_val = requests_list_str
-    #print requests_list_str
+
     if do_eval:
         ret_val = eval_wma_string(requests_list_str)
 
@@ -164,12 +141,12 @@ def generic_post(url, data_input):
 def get_requests_list(pattern="", not_in_wmstats=False, newest=False):
 
     if not_in_wmstats:
-        return get_requests_list_old(pattern)
+        print "###ERROR## not in wmstats. Old method was removed..."
 
     opener = urllib2.build_opener(X509CertOpen())
     if newest:
         ## lets get todays date and get -1 year from now
-        today_str = "{d.year}-{d.month}-{d.day}".format(d=date.today())
+        today_str = "{d.year}-{d.month}-{d.day}".format(d=datetime.date.today())
         today_str_split = today_str.split("-")
         year_ago_str = "%s-%s-%s" % (int(today_str_split[0])-1, today_str_split[1], today_str_split[2])
         year_ago_split = year_ago_str.split("-")
@@ -197,19 +174,6 @@ def get_requests_list(pattern="", not_in_wmstats=False, newest=False):
 
     print "total number of requests from wmstats: %s" % (len(req_list))
     return req_list
-
-def get_requests_list_old(pattern=""):
-    opener = urllib2.build_opener(X509CertOpen())
-    url = "%srequestmonitor" % (gm_address)
-    if pattern != "":
-        url = "%srequests?name=%s" %(gm_address, pattern)
-    datareq = urllib2.Request(url)
-    datareq.add_header('authenticated_wget', "The ultimate wgetter")
-    print "Using get_requests_list_old. Getting the list of requests from %s..." % (url)
-    requests_list_str = opener.open(datareq).read()
-    print "Got it in %s Bytes" % len(requests_list_str)
-
-    return eval_wma_string(requests_list_str)
 
 #-------------------------------------------------------------------------------
 
@@ -242,12 +206,13 @@ def get_dataset_name(dataset_list):
                                 'USER',
                                 'ALCARECO']
 
-            for (p,tier) in enumerate(tierPriority):
-                if tier in t:
-                    #print t,p
-                    return p
-            #print t
-            return t
+                for (p,tier) in enumerate(tierPriority):
+                    if tier in t:
+                        #print t,p
+                        return p
+                #print t
+                return t
+
         p1 = tierP(t1[2])
         p2 = tierP(t2[2])
         decision = (p1 > p2)
@@ -278,6 +243,7 @@ def configsFromWorkload(workload):
             if not 'ConfigCacheID' in workload[t]:
                 break
             res.append(workload[t]['ConfigCacheID'])
+            i += 1
 
     return res
 
@@ -303,9 +269,11 @@ def get_expected_events_withdict(dict_from_workload):
         f = 1.
 
     if 'InputDatasets' in dict_from_workload:
+        ###InputDatasetS are a list
         ids = dict_from_workload['InputDatasets']
-    elif 'Task1' in dict_from_workload and  'InputDataset' in dict_from_workload['Task1']:
-        ids = dict_from_workload['Task1']['InputDataset']
+    elif 'Task1' in dict_from_workload and 'InputDataset' in dict_from_workload['Task1']:
+        ###while in taskchain input is a string of Dataset
+        ids = [dict_from_workload['Task1']['InputDataset']]
     else:
         ids = []
 
@@ -552,7 +520,7 @@ def getNewDictFromRqmgr2(req_name):
     res = json.loads(generic_get("%s?name=%s" % (rqmgr2_url, req_name), do_eval=False))
     return res
 
-def getDictFromWorkload(req_name, attributes=['request','constraints']):
+def getDictFromWorkload(req_name):
     tmp = getNewDictFromRqmgr2(req_name)['result']
     if len(tmp) == 0:
         print "The request: %s is not in RequestManager2. Which is a glitch" % (req_name)
@@ -595,7 +563,8 @@ def parallel_test(arguments, force=False):
         req_status = req["status"]
 
         if req_status in skippable_stati:
-          return None
+            print "Rquest in skippable_stati"
+            return None
 
         # the name
         req_name = req["request_name"]
@@ -705,8 +674,8 @@ def parallel_test(arguments, force=False):
                 pdmv_request_dict['pdmv_at_T3'] = []
 
 
-            if 'pdmv_input_dataset' not in pdmv_request_dict or force:
-                if not dict_from_workload or force:
+            if 'pdmv_input_dataset' not in pdmv_request_dict:
+                if not dict_from_workload:
                     print "##DEBUG## trying to get dict_from_workload"
                     dict_from_workload = getDictFromWorkload(req_name)
                 if not dict_from_workload:
@@ -755,7 +724,7 @@ def parallel_test(arguments, force=False):
         else:
             print "Processing", req_name
 
-        if (not 'pdmv_configs' in pdmv_request_dict or pdmv_request_dict['pdmv_configs'] == []) or force:
+        if not 'pdmv_configs' in pdmv_request_dict or pdmv_request_dict['pdmv_configs'] == []:
             print "##DEBUG## trying to get dict_from_workload2"
             if not dict_from_workload:
                 dict_from_workload = getDictFromWorkload(req_name)
@@ -764,11 +733,14 @@ def parallel_test(arguments, force=False):
             pdmv_request_dict['pdmv_configs'] = configsFromWorkload(dict_from_workload[req_name])
 
         # assign the date
-        if (not 'pdmv_submission_date' in pdmv_request_dict or not 'pdmv_submission_time' in pdmv_request_dict) or force:
+        if not 'pdmv_submission_date' in pdmv_request_dict or not 'pdmv_submission_time' in pdmv_request_dict:
             ##load it on demand only
             print "##DEBUG## trying to get dict_from_workload3"
-            if not dict_from_workload: dict_from_workload = getDictFromWorkload(req_name)
-            if not dict_from_workload: return {}
+            if not dict_from_workload:
+                dict_from_workload = getDictFromWorkload(req_name)
+            if not dict_from_workload:
+                return {}
+
             pdmv_request_dict["pdmv_submission_date"] = datelist_to_str(
                     dict_from_workload[req_name]['RequestDate'])
 
@@ -870,13 +842,17 @@ def parallel_test(arguments, force=False):
         if pdmv_request_dict['pdmv_status_from_reqmngr'] in priority_changable_stati + ['acquired', 'running', 'running-open', 'running-closed']:
             retrievePriority = True
 
-        if retrievePriority or force:
+        if retrievePriority:
             print "##DEBUG## trying to get dict_from_workload5"
             if not dict_from_workload:
                 dict_from_workload = getDictFromWorkload(req_name)
             if not dict_from_workload:
                 return {}
-            pdmv_request_dict["pdmv_priority"] = dict_from_workload[req_name]['InitialPriority']
+            if 'InitialPriority' in dict_from_workload[req_name]:
+                pdmv_request_dict["pdmv_priority"] = dict_from_workload[req_name]['InitialPriority']
+            else:
+                pdmv_request_dict["pdmv_priority"] = dict_from_workload[req_name]['RequestPriority']
+
             if DEBUGME:
                 print "----------"
             # Present priority
@@ -1024,7 +1000,9 @@ def parallel_test(arguments, force=False):
         if not 'pdmv_custodial_sites' in pdmv_request_dict:
             pdmv_request_dict['pdmv_custodial_sites'] = []
 
-        if (pdmv_request_dict['pdmv_assigned_sites'] == [] or pdmv_request_dict['pdmv_custodial_sites'] == []) or force:
+        if (pdmv_request_dict['pdmv_assigned_sites'] == []
+                or pdmv_request_dict['pdmv_custodial_sites'] == []):
+
             print "##DEBUG## trying to get dict_from_workload6"
             if not dict_from_workload:
                 dict_from_workload = getDictFromWorkload(req_name)
