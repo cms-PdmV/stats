@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 
-#dbs3_url = 'https://cmsweb.cern.ch/dbs/prod/global/DBSReader/'
-dbs3_url = 'https://cmsweb-testbed.cern.ch/dbs/int/global/DBSReader/'
-rqmgr2_url = 'https://cmsweb-testbed.cern.ch/reqmgr2/data/request'
+#dbs3_url = 'https://cmsweb-testbed.cern.ch/dbs/int/global/DBSReader/'
+#rqmgr2_url = 'https://cmsweb-testbed.cern.ch/reqmgr2/data/request'
+dbs3_url = 'https://cmsweb.cern.ch/dbs/prod/global/DBSReader/'
+rqmgr2_url = 'https://cmsweb.cern.ch/reqmgr2/data/request'
 
 #-------------------------------------------------------------------------------
 import sys
@@ -152,11 +153,11 @@ def get_requests_list(pattern="", not_in_wmstats=False, newest=False):
         year_ago_split = year_ago_str.split("-")
 
         ##query for worflows from 1 year ago to today
-        url = "https://cmsweb-testbed.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bydate?startkey=[%s,%s,%s,0,0,0]&endkey=[%s,%s,%s,0,0,0]" % (
+        url = "https://cmsweb.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bydate?startkey=[%s,%s,%s,0,0,0]&endkey=[%s,%s,%s,0,0,0]" % (
             year_ago_split[0], year_ago_split[1], year_ago_split[2], today_str_split[0], today_str_split[1], today_str_split[2])
     else:
       ##we default to old one
-        url = "https://cmsweb-testbed.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bystatusandtype"
+        url = "https://cmsweb.cern.ch/couchdb/reqmgr_workload_cache/_design/ReqMgr/_view/bystatusandtype"
     datareq = urllib2.Request(url)
     datareq.add_header('authenticated_wget', "The ultimate wgetter")
     print "Getting the list of requests from %s..." % (url)
@@ -225,9 +226,10 @@ def get_dataset_name(dataset_list):
         dataset = 'None Yet'
     else:
         dataset = dataset_list[0]
+
     if 'None-None' in dataset or 'None-' in dataset:
         dataset = 'None Yet'
-    print "##DEBUG return: %s and %s" % (dataset, dataset_list)
+
     return dataset,dataset_list
 
 def configsFromWorkload(workload):

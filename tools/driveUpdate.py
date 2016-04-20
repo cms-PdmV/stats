@@ -39,8 +39,10 @@ def insertAll(req_list,docs,pattern=None,limit=None):
 
 countOld=0
 def insertOne(req):
+    ##req is from wmstats
     global statsCouch
     from statsMonitoring import parallel_test
+    #pprint.pprint(req)
     updatedDoc=parallel_test( [req,[]] )
     docid=req["request_name"]
     if updatedDoc==None or not len(updatedDoc):
@@ -144,6 +146,9 @@ def updateOne(docid, req_list):
     if "dmason" in docid:
         print "Its a dmason request: %s" % (docid)
         return False
+    #if "anorkus" not in docid:
+    #    print "Not anorkus request: %s" % (docid)
+    #    return False
     global statsCouch
     match_req_list=filter (lambda r: r["request_name"]==docid, req_list)
     try:
@@ -177,6 +182,7 @@ def updateOne(docid, req_list):
     req=match_req_list[0]
     from statsMonitoring import parallel_test
     global FORCE
+    #print "##DEBUG## sending a request for parallel_test.\nreq:%s\nupdatedDoc:%s" % (req, updatedDoc)
     updatedDoc=parallel_test( [req,[updatedDoc]] ,force=FORCE)
     if updatedDoc=={}:
         print "updating",docid,"returned an empty dict"
@@ -282,6 +288,10 @@ def main():
                       )
     parser.add_option("--db",
                       default="http://vocms084.cern.ch")
+    ### Due to migration for ReqMgr2
+    ##REMOVE BEFORE PUSH TO PROD
+    # parser.add_option("--db",
+    #                   default="http://anorkus-test4.cern.ch")
     parser.add_option("--mcm",
                       default=False,
                       help="drives the update from submitted requests in McM",
@@ -349,6 +359,7 @@ def main_do( options ):
             req_list = filter( lambda req : options.search in req["request_name"], req_list )
             #print len(req_list)
 
+        #print "req_list: " % (req_list)
         #skip malformated ones
         req_list = filter( lambda req : "status" in req, req_list )
         #print len(req_list)
@@ -365,8 +376,6 @@ def main_do( options ):
         #do not update TaskChain request statuses
         #req_list = filter( lambda req : 'type' in req and req['type']!='TaskChain', req_list)
         #print len(req_list)
-
-        pprint.pprint(req_list)
 
         if limit:
             req_list = req_list[0:limit]
@@ -420,9 +429,6 @@ def main_do( options ):
         req_list = get_requests_list(not_in_wmstats=options.nowmstats, newest=__newest)
         print "... done"
 
-        ## unthreaded
-        #updateSeveral(docs,req_list,pattern=None)
-
         if options.mcm:
             sys.path.append('/afs/cern.ch/cms/PPD/PdmV/tools/McM/')
             from rest import restful
@@ -475,7 +481,10 @@ def main_do( options ):
                 plotGrowth(withRevisions,statsCouch,force=FORCE)
                 ## notify McM for update !!
                 if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found','','None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
+                    print "Notifying McM for update"
                     inspect = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
+                    ##TO-DO change for reqgmr2 migration
+                    #inspect = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
                     os.system(inspect)
                 ## he we should trigger McM update if request is in done.
                 ## because inspection on done doesn't exists.
@@ -485,6 +494,7 @@ def main_do( options ):
                     withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
                     ## we should trigger this only if events_in_das was updated for done
                     update_comm = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
+                    #update_comm = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
                     print "Triggering McM completed_evts syncing for a done request %s" % (
                             withRevisions['pdmv_prep_id'])
 
