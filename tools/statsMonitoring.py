@@ -367,7 +367,12 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
 #-------------------------------------------------------------------------------
 ## methods to format a date from ReqMngr workload date lien
 def timelist_to_str(timelist):
-    (h, m, s) = map(int, timelist)[3:]
+    if len(timelist) == 6:
+        (h, m, s) = map(int, timelist)[3:]
+    else:
+        ##we have Backfill wfs which doesn't have seconds in their time list.
+        print "ERROR RquestDate is malformated %s" % (timelist)
+        (h, m, s) = timelist[3], timelist[4], 0
     return "%02d%02d%02d" % (h, m, s)
 
 def datelist_to_str(datelist):
@@ -803,7 +808,8 @@ def parallel_test(arguments, force=False):
         if not dict_from_workload:
             return {}
 
-        if 'PrepID' in dict_from_workload[req_name]:
+        if ('PrepID' in dict_from_workload[req_name]) and (dict_from_workload[req_name]['PrepID'] != None):
+            print "##DEBUG## prepid is not None"
             prep_id = dict_from_workload[req_name]['PrepID']
         else:
             prep_id = 'No-Prepid-Found'
@@ -1070,6 +1076,14 @@ def parallel_test(arguments, force=False):
         print req["request_name"],"IS A DEAD FAILING REQUEST"
         print trf
         tr = open(trf, 'w')
+        tr.write("dict_from_workload\n")
+        tr.write(json.dumps(dict_from_workload))
+        tr.write("\n")
+        tr.write("pdmv_request_dict\n")
+        tr.write(json.dumps(pdmv_request_dict))
+        tr.write("\n")
+        tr.write("req:\n")
+        tr.write(json.dumps(req))
         tr.write(traceback.format_exc())
         tr.close()
 
