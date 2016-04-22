@@ -310,7 +310,7 @@ def main():
     return main_do( options )
 
 def main_do( options ):
-
+    print "##DEBUG## main"
     if options.check:
         #we check if this script is already running with same parameters#
         checks=['ps -f -u $USER']
@@ -362,20 +362,20 @@ def main_do( options ):
         #print "req_list: " % (req_list)
         #skip malformated ones
         req_list = filter( lambda req : "status" in req, req_list )
-        #print len(req_list)
+        print len(req_list)
 
         #take only the ones not already in there
         req_list = filter( lambda req : req["request_name"] not in docs, req_list )
-        #print len(req_list)
+        print len(req_list)
 
         #skip trying to insert aborted and rejected or failed
         #req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed','aborted-archived','rejected-archived','failed-archived'], req_list )
-        req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed'], req_list )
-        #print len(req_list)
+        req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed', None], req_list )
+        print len(req_list)
 
         #do not update TaskChain request statuses
         #req_list = filter( lambda req : 'type' in req and req['type']!='TaskChain', req_list)
-        #print len(req_list)
+        print len(req_list)
 
         if limit:
             req_list = req_list[0:limit]
