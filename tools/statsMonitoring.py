@@ -189,33 +189,29 @@ def get_dataset_name(dataset_list):
     def compareDS(s1, s2):
         t1 = s1.split('/')[1:]
         t2 = s2.split('/')[1:]
-        if len(t1[1]) > len(t2[1]):
-            #print t1,t2,True
-            return 1
-        else:
-            #decision=t1[2] < t2[2]
-            def tierP(t):
-                tierPriority = [
-                                '/RECO',
-                                'SIM-RECO',
-                                'DIGI-RECO',
-                                'AOD',
-                                'SIM-RAW-RECO',
-                                'DQM' ,
-                                'GEN-SIM',
-                                'RAW-RECO',
-                                'USER',
-                                'ALCARECO']
-
-                for (p,tier) in enumerate(tierPriority):
-                    if tier in t:
-                        #print t,p
-                        return p
-                #print t
-                return t
+        def tierP(t):
+            tierPriority = [
+                            '/RECO',
+                            'SIM-RECO',
+                            'DIGI-RECO',
+                            'AOD',
+                            'SIM-RAW-RECO',
+                            'GEN-SIM',
+                            'RAW-RECO',
+                            'USER',
+                            'ALCARECO',
+                            'DQM'
+                            ]
+            for (p,tier) in enumerate(tierPriority):
+                if tier in t:
+                    # print t,p
+                    return p
+            # print t
+            return t
 
         p1 = tierP(t1[2])
         p2 = tierP(t2[2])
+
         decision = (p1 > p2)
         #print t1,t2,decision
         return decision*2 - 1
