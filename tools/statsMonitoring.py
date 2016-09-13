@@ -425,7 +425,7 @@ def get_status_nevts_from_dbs(dataset):
             total_evts = int(ret[0]["num_event"])
         print "total_evts_new ", total_evts
     except:
-        print "Failed to get blocks for --",dataset,"--"
+        print "Failed to get total_evts for: %s" % (dataset)
         import traceback
         print traceback.format_exc()
         blocks = []
