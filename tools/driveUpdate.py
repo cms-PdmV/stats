@@ -479,6 +479,11 @@ def main_do( options ):
             try:
                 withRevisions = statsCouch.get_file_info_withrev(r)
                 plotGrowth(withRevisions,statsCouch,force=FORCE)
+
+                ##we shouldnt trigger mcm for ReRecos or Relvals which doesnt exist there
+                if any(el in withRevisions['pdmv_prep_id'].lower() for el in ['relval', 'rereco']):
+                    print "NOT bothering McM for rereco or relval"
+                    continue
                 ## notify McM for update !!
                 if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found','','None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
                     print "Notifying McM for update"
