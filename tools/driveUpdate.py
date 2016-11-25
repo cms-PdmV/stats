@@ -161,7 +161,6 @@ def updateOne(docid, req_list):
     today_str_split = today_str.split("-")
     year_ago_str = "%s-%s-%s" % (int(today_str_split[0])-1, today_str_split[1], today_str_split[2])
     year_ago_split = year_ago_str.split("-")
-    print "Working on: %s" % (docid)
     try:
         if int(thisDoc["pdmv_submission_date"]) < int(datelist_to_str(year_ago_split)):
             print "Document: %s is too old (> 1year) to be updated" % (docid)

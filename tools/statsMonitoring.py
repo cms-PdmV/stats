@@ -416,44 +416,20 @@ def get_status_nevts_from_dbs(dataset):
     if dataset == '?':
         return undefined
 
-    if debug:
-        print "Querying DBS"
-
     total_evts = 0
     total_open = 0
 
-    if debug:
-        print "load"
-    if debug:
-        print "instance"
-    if debug:
-        print "blocks"
-
     try:
-        ret = generic_get(dbs3_url+"blocks?dataset=%s&detail=true" %(dataset))
-        blocks = ret
+        ret = generic_get(dbs3_url + "filesummaries?dataset=%s" % (dataset)) #returns blocks names
+        if len(ret): ##check if returned data is not empty
+            total_evts = int(ret[0]["num_event"])
+        print "total_evts_new ", total_evts
     except:
-        print "Failed to get blocks for --",dataset,"--"
+        print "Failed to get total_evts for: %s" % (dataset)
         import traceback
         print traceback.format_exc()
         blocks = []
         return undefined
-
-    print "##DEBUG## blocks len: %s" % (len(blocks))
-    for b in blocks:
-        if debug:
-            print b
-        if b["open_for_writing"] == 0: #lame DAS format: block info in a single object in list ????
-            ###TO-DO re-use existing connection!
-            ret = generic_get(dbs3_url+"blocksummaries?block_name=%s" %(b["block_name"].replace("#","%23")))
-            data = ret
-            total_evts += data[0]["num_event"]
-        elif b["open_for_writing"] == 1:
-            ret = generic_get(dbs3_url+"blocksummaries?block_name=%s" %(b["block_name"].replace("#","%23")))
-            data = ret
-            total_open += data[0]["num_event"]
-    if debug:
-        print "done"
 
     try:
         ret = generic_post(dbs3_url+"datasetlist", {"dataset":[dataset], "detail":True})
