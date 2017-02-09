@@ -131,6 +131,8 @@ def generic_get(url, do_eval=True):
 def generic_post(url, data_input):
 
     data = json.dumps(data_input)
+    print data
+    print url
     opener = urllib2.build_opener(X509CertOpen())
     datareq = urllib2.Request(url, data, {"Content-type" : "application/json"})
     requests_list_str = opener.open(datareq).read()
@@ -296,11 +298,13 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
     check request number_of_event was extracted from rqmgr2 dict
     if not calculate evts form: input_ds and run_whilelist & block_white_list through DBS3
     """
+    print (rne, ids, bwl, rwl, filter_eff)
     #wrap up
     if rne == 'None' or rne == None or rne == 0:
         s = 0.
         for d in ids:
             if len(rwl):
+                print "Doing run selection"
                 try:
                     ret = generic_get(dbs3_url + "blocks?dataset=%s" % (d)) #returns blocks names
                     blocks = ret
@@ -309,6 +313,7 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
                     blocks = None
                 if blocks:
                     for run in rwl:
+                        print "checking run: %s" % (run)
                         ret = generic_get(dbs3_url + "filesummaries?dataset=%s&run_num=%s" % (d, run)) #returns blocks names
                         data = ret
                         try:
@@ -316,6 +321,7 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
                         except:
                             print d, "does not have event for", run
             else:
+                print "Doing block selection"
                 ret = generic_get(dbs3_url+"blocks?dataset=%s" %(d)) #returns blocks names ????
                 blocks = ret
                 if len(bwl):
