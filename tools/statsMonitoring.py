@@ -268,11 +268,9 @@ def get_expected_events_withdict(dict_from_workload):
     else:
         f = 1.
 
-    if 'InputDatasets' in dict_from_workload:
-        ###InputDatasetS are a list
-        ids = dict_from_workload['InputDatasets']
+    if 'InputDataset' in dict_from_workload:
+        ids = [dict_from_workload['InputDataset']]
     elif 'Task1' in dict_from_workload and 'InputDataset' in dict_from_workload['Task1']:
-        ###while in taskchain input is a string of Dataset
         ids = [dict_from_workload['Task1']['InputDataset']]
     else:
         ids = []
