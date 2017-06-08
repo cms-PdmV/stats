@@ -332,14 +332,15 @@ def main_do( options ):
 
 
     ## get from stats couch the list of requests
+    view = 'yearAgo' if options.do == 'update' else 'all'
     print "Getting all stats ..."
-    allDocs = statsCouch.get_view('all')
+    allDocs = statsCouch.get_view(view)
     docs = [doc['id'] for doc in allDocs['rows']]
     #remove the _design/stats
     docs = filter(lambda doc : not doc.startswith('_'), docs)
     print "... done"
 
-    nproc = 5
+    nproc = 10
     limit = None
     if options.test:
         limit = 10
