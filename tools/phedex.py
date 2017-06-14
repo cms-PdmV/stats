@@ -25,14 +25,14 @@ def phedex(dataset,verbose=False):
 
     if dataset =='None Yet' or dataset =='?':
         return None
-    
+
     url="/phedex/datasvc/json/prod/blockreplicas?dataset="+dataset
     urlconn='cmsweb.cern.ch'
 
     phedex={}
     phedex.update(getone('cmsweb.cern.ch','/phedex/datasvc/json/prod/blockreplicas?dataset='+dataset))
-    phedex.update(getone('cmsweb.cern.ch','/phedex/datasvc/json/prod/requestlist?dataset='+dataset))
-    
+    #phedex.update(getone('cmsweb.cern.ch','/phedex/datasvc/json/prod/requestlist?dataset='+dataset))
+
     if len(phedex)==0:
         return None
     #phedex=phedex['phedex']
@@ -69,10 +69,10 @@ def transferToCustodial(ph):
     #print "going to",len(filter(lambda s : 'T1' in s,  allincomplete)),"T1\n",pprint.pformat(filter(lambda s : 'T1' in s,  allincomplete))
     #print "going to",len(filter(lambda s : 'T2' in s,  allincomplete)),"T2\n",pprint.pformat(filter(lambda s : 'T2' in s,  allincomplete))
     #print "living on",len(filter(lambda s : 'T2' in s,  allcomplete)),"T2\n",pprint.pformat(filter(lambda s : 'T2' in s,  allcomplete))
-    
+
     return (complete,incomplete,allcomplete,allincomplete)
 
-
+"""
 def atT3(ph):
     if not ph: return []
     where=[]
@@ -84,7 +84,7 @@ def atT3(ph):
             for node in req.node:
                 if node.name.startswith('T3'):
                     where.append(node.name)
-                    
+
     where=list(set(where))
     return where
 
@@ -94,19 +94,19 @@ def atT3DS(dataset):
 
 def atAnyT3(ph):
     return len(atT3(ph))!=0
-
+"""
 def atT2DS(dataset):
     ph=phedex(dataset)
     return atT2(ph)
 
-def atT2(ph):    
+def atT2(ph):
     if not ph:
         return []
     (complete,incomplete,allcomplete,allincomplete) = transferToCustodial(ph)
     anyT2=filter(lambda s : 'T2' in s,  allcomplete)
     gAnyT2=filter(lambda s : 'T2' in s,  allincomplete)
     return anyT2+gAnyT2
-    
+
 def atAnyT2(ph):
     (complete,incomplete,allcomplete,allincomplete) = transferToCustodial(ph)
     anyT2=filter(lambda s : 'T2' in s,  allcomplete)
@@ -114,7 +114,7 @@ def atAnyT2(ph):
     print "living on",len(anyT2),"T2\n",pprint.pformat(anyT2)
 
     return len(anyT2)!=0
-    
+
 def atCustodial(ph):
     (complete,incomplete,allc,allin) = transferToCustodial(ph)
     if len(complete)==0:
@@ -124,7 +124,7 @@ def atCustodial(ph):
             return (False,"%d%%"%( len(complete) / len(complete+incomplete) ))
         else:
             return (True,"100%")
-        
+
 def custodialDS(dataset):
     ph=phedex(dataset)
     return custodials(ph)
