@@ -463,13 +463,9 @@ def main_do( options ):
         print results
 
         print "\n\n"
-        ##udpdate the growth plots ???
-        from growth import plotGrowth
         for r in results:
             try:
                 withRevisions = statsCouch.get_file_info_withrev(r)
-                plotGrowth(withRevisions,statsCouch,force=FORCE)
-
                 ##we shouldnt trigger mcm for ReRecos or Relvals which doesnt exist there
                 if any(el in withRevisions['pdmv_prep_id'].lower() for el in ['relval', 'rereco']):
                     print "NOT bothering McM for rereco or relval"
