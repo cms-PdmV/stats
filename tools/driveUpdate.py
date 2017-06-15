@@ -70,9 +70,6 @@ def worthTheUpdate(new,old):
     if set(old['pdmv_at_T2'])!=set(new['pdmv_at_T2']):
         return True
 
-    if set(old['pdmv_at_T3'])!=set(new['pdmv_at_T3']):
-        return True
-
     if old!=new:
         ## what about monitor time ???? that is different ?
         if set(old.keys())!=set(new.keys()):
@@ -87,8 +84,6 @@ def worthTheUpdate(new,old):
 
         #samples location has updated
         if ('pdmv_at_T2' in old and 'pdmv_at_T2' in new) and (set(old['pdmv_at_T2']) != set(new['pdmv_at_T2']) ):
-            return True
-        if ('pdmv_at_T3' in old and 'pdmv_at_T3' in new) and (set(old['pdmv_at_T3']) != set(new['pdmv_at_T3']) ):
             return True
 
         n_more=(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])-(old['pdmv_evts_in_DAS']+old['pdmv_open_evts_in_DAS'])
@@ -142,7 +137,7 @@ def compare_dictionaries(dict1, dict2):
      except:
          return False
 
-def updateOne(docid, req_list):
+def updateOne(docid, match_req_list):
     if "dmason" in docid:
         print "Its a dmason request: %s" % (docid)
         return False
@@ -150,24 +145,11 @@ def updateOne(docid, req_list):
     #    print "Not anorkus request: %s" % (docid)
     #    return False
     global statsCouch
-    match_req_list=filter (lambda r: r["request_name"]==docid, req_list)
     try:
         thisDoc=statsCouch.get_file_info(docid)
     except:
         print "There was an access crash with",docid
         return False
-
-    today_str = "{d.year}-{d.month}-{d.day}".format(d=date.today())
-    today_str_split = today_str.split("-")
-    year_ago_str = "%s-%s-%s" % (int(today_str_split[0])-1, today_str_split[1], today_str_split[2])
-    year_ago_split = year_ago_str.split("-")
-    try:
-        if int(thisDoc["pdmv_submission_date"]) < int(datelist_to_str(year_ago_split)):
-            print "Document: %s is too old (> 1year) to be updated" % (docid)
-            return False
-    except Exception as ex:
-        print "issues with: %s" % (docid)
-        raise ValueError("issues with converting submission_date to int: %s" % (docid))
 
     updatedDoc=copy.deepcopy(thisDoc)
     if not len(match_req_list):
@@ -237,15 +219,12 @@ def updateOne(docid, req_list):
         return False
 
 def updateOneIt(arguments):
-    docid,req_list = arguments
-    return updateOne(docid,req_list)
-
-def updateSeveral(docs,req_list,pattern=None):
-    for docid in docs:
-        if pattern and not pattern in docid:
-            continue
-        print docid
-        updateOne(docid,req_list)
+    docid,request_dict = arguments
+    if docid in request_dict:
+        request_list = request_dict[docid]
+    else:
+        request_list = []
+    return updateOne(docid,request_list)
 
 def dumpSome(docids,limit):
     dump=[]
@@ -332,11 +311,13 @@ def main_do( options ):
 
 
     ## get from stats couch the list of requests
+    view = 'yearAgo' if options.do == 'update' else 'all'
     print "Getting all stats ..."
-    allDocs = statsCouch.get_view('all')
+    allDocs = statsCouch.get_view(view)
     docs = [doc['id'] for doc in allDocs['rows']]
     #remove the _design/stats
-    docs = filter(lambda doc : not doc.startswith('_'), docs)
+    if view == 'all':
+        docs = filter(lambda doc : not doc.startswith('_'), docs)
     print "... done"
 
     nproc = 5
@@ -453,12 +434,17 @@ def main_do( options ):
         if limit:
             docs = docs[0:limit]
 
-
-        repeated_req_list = itertools.repeat(req_list, len(docs))
+        request_dict = {}
+        for request in req_list:
+            if request['request_name'] in request_dict:
+                request_dict[request['request_name']].append(request)
+            else:
+                request_dict[request['request_name']] = [request]
+        repeated_request_dict = itertools.repeat(request_dict, len(docs))
 
         print "Dispaching", len(docs), "requests to ", str(nproc), "processes..."
         pool = multiprocessing.Pool(nproc)
-        results = pool.map(updateOneIt, itertools.izip(docs, repeated_req_list))
+        results = pool.map(updateOneIt, itertools.izip(docs, repeated_request_dict))
 
         print "End dispatching!"
 
@@ -472,13 +458,9 @@ def main_do( options ):
         print results
 
         print "\n\n"
-        ##udpdate the growth plots ???
-        from growth import plotGrowth
         for r in results:
             try:
                 withRevisions = statsCouch.get_file_info_withrev(r)
-                plotGrowth(withRevisions,statsCouch,force=FORCE)
-
                 ##we shouldnt trigger mcm for ReRecos or Relvals which doesnt exist there
                 if any(el in withRevisions['pdmv_prep_id'].lower() for el in ['relval', 'rereco']):
                     print "NOT bothering McM for rereco or relval"

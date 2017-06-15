@@ -25,7 +25,7 @@ import datetime
 import random
 import json
 
-from phedex import phedex, runningSites, custodials, atT2, atT3
+from phedex import phedex, runningSites, custodials, atT2
 
 ##define global variables
 # Collect all the requests which are in one of these stati which allow for
@@ -636,8 +636,8 @@ def parallel_test(arguments, force=False):
             noSites = True
             if 'pdmv_at_T2' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T2']):
                 noSites = False
-            if 'pdmv_at_T3' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T3']):
-                noSites = False
+            if 'pdmv_at_T3' not in pdmv_request_dict:
+                pdmv_request_dict['pdmv_at_T3'] = []
 
             if not force:
                 noSites = False
@@ -648,14 +648,6 @@ def parallel_test(arguments, force=False):
                 pdmv_request_dict['pdmv_at_T2'] = atT2(phedexObj)
             elif not 'pdmv_at_T2' in pdmv_request_dict:
                 pdmv_request_dict['pdmv_at_T2'] = []
-
-            if noSites and needsToBeUsed and (not 'pdmv_at_T3' in pdmv_request_dict or pdmv_request_dict['pdmv_at_T3']==[]):
-                if not phedexObj:
-                    phedexObj = phedex(pdmv_request_dict["pdmv_dataset_name"])
-                pdmv_request_dict['pdmv_at_T3'] = atT3(phedexObj)
-            elif not 'pdmv_at_T3' in pdmv_request_dict:
-                pdmv_request_dict['pdmv_at_T3'] = []
-
 
             if 'pdmv_input_dataset' not in pdmv_request_dict:
                 if not dict_from_workload:
@@ -1001,11 +993,11 @@ def parallel_test(arguments, force=False):
             if pdmv_request_dict['pdmv_status_in_DAS']:
                 if not phedexObj:
                     phedexObj = phedex(pdmv_request_dict["pdmv_dataset_name"])
-                    pdmv_request_dict['pdmv_custodial_sites'] = custodials(phedexObj)
-                    ##TO-DO works only for 1st entry of site?
-                    if pdmv_request_dict['pdmv_custodial_sites'] == []:
-                        pdmv_request_dict['pdmv_custodial_sites'] = filter(
-                                lambda s : s.startswith('T1_'), sites)
+                pdmv_request_dict['pdmv_custodial_sites'] = custodials(phedexObj)
+                ##TO-DO works only for 1st entry of site?
+                if pdmv_request_dict['pdmv_custodial_sites'] == []:
+                    pdmv_request_dict['pdmv_custodial_sites'] = filter(
+                            lambda s : s.startswith('T1_'), sites)
 
             pdmv_request_dict['pdmv_assigned_sites'] = list(sites)
 
@@ -1018,8 +1010,8 @@ def parallel_test(arguments, force=False):
         noSites = True
         if 'pdmv_at_T2' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T2']):
             noSites = False
-        if 'pdmv_at_T3' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T3']):
-            noSites = False
+        if 'pdmv_at_T3' not in pdmv_request_dict:
+            pdmv_request_dict['pdmv_at_T3'] = []
 
         if noSites and needsToBeUsed and (not 'pdmv_at_T2' in pdmv_request_dict or pdmv_request_dict['pdmv_at_T2']==[]):
             if not phedexObj:
@@ -1028,14 +1020,6 @@ def parallel_test(arguments, force=False):
             pdmv_request_dict['pdmv_at_T2'] = atT2(phedexObj)
         elif not 'pdmv_at_T2' in pdmv_request_dict:
             pdmv_request_dict['pdmv_at_T2'] = []
-
-        if noSites and needsToBeUsed and (not 'pdmv_at_T3' in pdmv_request_dict or pdmv_request_dict['pdmv_at_T3']==[]):
-            if not phedexObj:
-                phedexObj = phedex(pdmv_request_dict["pdmv_dataset_name"])
-
-            pdmv_request_dict['pdmv_at_T3'] = atT3(phedexObj)
-        elif not 'pdmv_at_T3' in pdmv_request_dict:
-            pdmv_request_dict['pdmv_at_T3'] = []
 
         if (pdmv_request_dict['pdmv_status_from_reqmngr'] in complete_stati) and ('pdmv_performance' not in pdmv_request_dict or pdmv_request_dict['pdmv_performance']=={}):
             print "updating for perf"
