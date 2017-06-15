@@ -636,8 +636,8 @@ def parallel_test(arguments, force=False):
             noSites = True
             if 'pdmv_at_T2' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T2']):
                 noSites = False
-            if 'pdmv_at_T3' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T3']):
-                noSites = False
+            if 'pdmv_at_T3' not in pdmv_request_dict:
+                pdmv_request_dict['pdmv_at_T3'] = []
 
             if not force:
                 noSites = False
@@ -1010,8 +1010,8 @@ def parallel_test(arguments, force=False):
         noSites = True
         if 'pdmv_at_T2' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T2']):
             noSites = False
-        if 'pdmv_at_T3' in pdmv_request_dict and len(pdmv_request_dict['pdmv_at_T3']):
-            noSites = False
+        if 'pdmv_at_T3' not in pdmv_request_dict:
+            pdmv_request_dict['pdmv_at_T3'] = []
 
         if noSites and needsToBeUsed and (not 'pdmv_at_T2' in pdmv_request_dict or pdmv_request_dict['pdmv_at_T2']==[]):
             if not phedexObj:

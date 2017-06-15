@@ -70,9 +70,6 @@ def worthTheUpdate(new,old):
     if set(old['pdmv_at_T2'])!=set(new['pdmv_at_T2']):
         return True
 
-    if set(old['pdmv_at_T3'])!=set(new['pdmv_at_T3']):
-        return True
-
     if old!=new:
         ## what about monitor time ???? that is different ?
         if set(old.keys())!=set(new.keys()):
@@ -87,8 +84,6 @@ def worthTheUpdate(new,old):
 
         #samples location has updated
         if ('pdmv_at_T2' in old and 'pdmv_at_T2' in new) and (set(old['pdmv_at_T2']) != set(new['pdmv_at_T2']) ):
-            return True
-        if ('pdmv_at_T3' in old and 'pdmv_at_T3' in new) and (set(old['pdmv_at_T3']) != set(new['pdmv_at_T3']) ):
             return True
 
         n_more=(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])-(old['pdmv_evts_in_DAS']+old['pdmv_open_evts_in_DAS'])
