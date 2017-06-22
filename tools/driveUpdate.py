@@ -312,6 +312,10 @@ def main_do( options ):
 
     ## get from stats couch the list of requests
     view = 'yearAgo' if options.do == 'update' else 'all'
+    ##in case we want to force update even older workflows
+    if options.force:
+        view = 'all'
+
     print "Getting all stats ..."
     allDocs = statsCouch.get_view(view)
     docs = [doc['id'] for doc in allDocs['rows']]
@@ -431,6 +435,7 @@ def main_do( options ):
                 req_list = filter(lambda req : options.search in req["request_name"], req_list)
                 if len(req_list):
                     pprint.pprint(req_list)
+
         if limit:
             docs = docs[0:limit]
 
