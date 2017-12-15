@@ -738,6 +738,15 @@ def parallel_test(arguments, force=False):
         req_status = req["status"]
         pdmv_request_dict["pdmv_status_from_reqmngr"] = req_status
 
+        if 'RequestTransition' in dict_from_workload[req_name]:
+            status_history = []
+            transitions = dict_from_workload[req_name]['RequestTransition']
+            for transition in transitions:
+                status_history.append(transition['Status'])
+            pdmv_request_dict['pdmv_status_history_from_reqmngr'] = status_history
+        else:
+            pdmv_request_dict['pdmv_status_history_from_reqmngr'] = []
+
         if req_status in priority_changable_stati:
             pdmv_request_dict["pdmv_status"] = "ch_prio"
         else:
