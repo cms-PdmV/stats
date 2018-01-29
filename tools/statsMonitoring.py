@@ -776,6 +776,15 @@ def parallel_test(arguments, force=False):
         if not dict_from_workload:
             return {}
 
+        if 'RequestTransition' in dict_from_workload[req_name]:
+            status_history = []
+            transitions = dict_from_workload[req_name]['RequestTransition']
+            for transition in transitions:
+                status_history.append(transition['Status'])
+            pdmv_request_dict['pdmv_status_history_from_reqmngr'] = status_history
+        else:
+            pdmv_request_dict['pdmv_status_history_from_reqmngr'] = []
+
         if ('PrepID' in dict_from_workload[req_name]) and (dict_from_workload[req_name]['PrepID'] != None):
             print "##DEBUG## prepid is not None"
             prep_id = dict_from_workload[req_name]['PrepID']
