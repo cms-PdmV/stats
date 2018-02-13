@@ -1,65 +1,64 @@
 import json
 import os
 import time
-import re
 import urllib2
 import traceback
 from operator import itemgetter
 
-class Simulation(object):    
-    #
-    #Global Value which contain all the parameter of the simulation
-    ##
+
+class Simulation(object):
+    # Global Value which contain all the parameter of the simulation
     Attributs = {}
-    #_getitem_
-    #
-    #GetItem Function Allow the object Simulation to work like a dictionnary in using Attributs like source of information
+
     def __getitem__(self, name):
+        """
+        GetItem Function Allow the object Simulation to work like a dictionnary in using Attributs like source of information
+        """
         return self.Attributs[name]
-        
+
     def getsim(self):
         return self.Attributs
-    #_init_
-    #
-    #Create a new void simulation with all parameter at the base value 0 or "" only Monitor time get the value "N\A" (request of Vlimant)
+
     def _init_(self):
+        """
+        Create a new void simulation with all parameter at the base value 0 or "" only Monitor time get the value "N\A" (request of Vlimant)
+        """
         self.Attributs = {}
-        self.Attributs["SIMID"] = 0;
-        self.Attributs["PDMV expected events"] = 0;
-        self.Attributs["PDMV type"] = "";
-        self.Attributs["PDMV status from reqmngr"] = "";
-        self.Attributs["PDMV priority"] = 0;
-        self.Attributs["PDMV running jobs"] = 0;
-        self.Attributs["PDMV running days"] = 0;
-        self.Attributs["PDMV evts in DAS"] = 0;
-        self.Attributs["PDMV request name"] = "";
-        self.Attributs["PDMV submission date"] = "";
-        self.Attributs["PDMV completion eta in DAS"] = 0;
-        self.Attributs["PDMV status in DAS"] = "";
-        self.Attributs["PDMV prep id"] = "";
-        self.Attributs["PDMV campaign"] = "";
-        self.Attributs["PDMV data set name"] = "";
-        self.Attributs["PDMV status"] = "";
-        self.Attributs["PDMV request"] = "";
-        self.Attributs["PDMV pd pattern"] = "";
-        self.Attributs["PDMV present priority"] = 0;
-        self.Attributs["PDMV completion in das"] = 0;
-        self.Attributs["PDMV all jobs"] = 0;
-        self.Attributs["PDMV pending jobs"] = 0;
-        self.Attributs["PDMV monitor time"] = "N\A";
-        self.Attributs["PDMV Perf"] = "";
-        
-    #toString()
-    #
-    #Allow to print a Simuation class in the format of a html table row
+        self.Attributs["SIMID"] = 0
+        self.Attributs["PDMV expected events"] = 0
+        self.Attributs["PDMV type"] = ""
+        self.Attributs["PDMV status from reqmngr"] = ""
+        self.Attributs["PDMV priority"] = 0
+        self.Attributs["PDMV running jobs"] = 0
+        self.Attributs["PDMV running days"] = 0
+        self.Attributs["PDMV evts in DAS"] = 0
+        self.Attributs["PDMV request name"] = ""
+        self.Attributs["PDMV submission date"] = ""
+        self.Attributs["PDMV completion eta in DAS"] = 0
+        self.Attributs["PDMV status in DAS"] = ""
+        self.Attributs["PDMV prep id"] = ""
+        self.Attributs["PDMV campaign"] = ""
+        self.Attributs["PDMV data set name"] = ""
+        self.Attributs["PDMV status"] = ""
+        self.Attributs["PDMV request"] = ""
+        self.Attributs["PDMV pd pattern"] = ""
+        self.Attributs["PDMV present priority"] = 0
+        self.Attributs["PDMV completion in das"] = 0
+        self.Attributs["PDMV all jobs"] = 0
+        self.Attributs["PDMV pending jobs"] = 0
+        self.Attributs["PDMV monitor time"] = "N\A"
+        self.Attributs["PDMV Perf"] = ""
+
     def toString(self, typeA, ListOfColumns):
-        
+        """
+        Allow to print a Simuation class in the format of a html table row
+        """
         if(typeA):
             String = '<tr class="un">'
         else:
             String = '<tr class="bis">'
+
         i = 0
-        
         while(i < len(ListOfColumns)):
             if(int(ListOfColumns[i]) == 1):
                 String = String + "<td>" + str(self.Attributs['SIMID']) + "</td>"
@@ -81,14 +80,12 @@ class Simulation(object):
                 __dirname = os.path.normpath(os.path.dirname("/".join(self.Attributs["PDMV request name"].split("_"))))
                 __filename = os.path.basename("/".join(self.Attributs["PDMV request name"].split("_")))
                 __growthurl = os.path.join(__dirname, __filename)
-                #String = String + "<td>" + '<a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/' + self.Attributs["PDMV request name"] + '">' + self.Attributs["PDMV request name"] + "</a></td>"
-                #String = String + "<td>"+ '<a href="https://cmsweb.cern.ch/reqmgr/view/details/'+self.Attributs["PDMV request name"] + '"> details </a>' + '<a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/'+ self.Attributs["PDMV request name"] + '">' + self.Attributs["PDMV request name"]+"</a> </td>"
-                String = String + '<td><a href="https://cmsweb.cern.ch/reqmgr2/fetch?rid=%s">details</a> <a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/%s"> %s </a> <a href=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif target=_blank><img src=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif alt="" width=100></a> </td>'%(self.Attributs["PDMV request name"],
+                String = String + '<td><a href="https://cmsweb.cern.ch/reqmgr2/fetch?rid=%s">details</a> <a href="https://cmsweb.cern.ch/couchdb/workloadsummary/_design/WorkloadSummary/_show/histogramByWorkflow/%s"> %s </a> <a href=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif target=_blank><img src=https://cms-pdmv.web.cern.ch/cms-pdmv/stats/growth/%s.gif alt="" width=100></a> </td>' % (self.Attributs["PDMV request name"],
                     self.Attributs["PDMV request name"],
                     self.Attributs["PDMV request name"],
                     __growthurl,
                     __growthurl)
-                                                                                                                                                                                                                                                                                                                                                                                                                   
+
             if(int(ListOfColumns[i]) == 10):
                 String = String + "<td>" + self.Attributs["PDMV submission date"] + "</td>"
             if(int(ListOfColumns[i]) == 11):
@@ -96,7 +93,9 @@ class Simulation(object):
             if(int(ListOfColumns[i]) == 12):
                 String = String + "<td>" + self.Attributs["PDMV status in DAS"] + "</td>"
             if(int(ListOfColumns[i]) == 13):
-                String = String + "<td>" + '<a href="http://cms.cern.ch/iCMS/prep/requestmanagement?code=' + self.Attributs["PDMV prep id"] + '">' + self.Attributs["PDMV prep id"] + "</a></td>"
+                String = String + "<td>" + '<a href="http://cms.cern.ch/iCMS/prep/requestmanagement?code=' +\
+                    self.Attributs["PDMV prep id"] + '">' +\
+                    self.Attributs["PDMV prep id"] + "</a></td>"
             if(int(ListOfColumns[i]) == 14):
                 String = String + "<td>" + self.Attributs["PDMV campaign"] + '</td>'
             if(int(ListOfColumns[i]) == 15):
@@ -122,19 +121,20 @@ class Simulation(object):
             i = i + 1
         String = String + "</tr> \n"
         return String
-    
-    
-    #ProgressBarFunc
-    #
-    #Generate The Progress Bar of the object simulation which call this function
+
     def ProgressBarFunc(self, pourcentage):
-        PourcentageValue = int(0.7 * pourcentage )#to ge a progressive color in the progressBar !
-        return '<div class="progress"><div class="pre" style="background-color:' + self.RGBtoHex(PourcentageValue+ 39, PourcentageValue +77, PourcentageValue + 122) + ';height:20px; width:' + str(pourcentage * 1.5) + 'px;"><div class="text">' + str(pourcentage) + '%</div></div></div>'
-    #RGBtoHex
-    #
-    #Convert a rgb color in HEX value, useful for the Progress Bar Color
+        """
+        Generate The Progress Bar of the object simulation which call this function
+        """
+        PourcentageValue = int(0.7 * pourcentage)  # to ge a progressive color in the progressBar !
+        return '<div class="progress"><div class="pre" style="background-color:' + self.RGBtoHex(PourcentageValue + 39, PourcentageValue + 77, PourcentageValue + 122) + ';height:20px; width:' + str(pourcentage * 1.5) + 'px;"><div class="text">' + str(pourcentage) + '%</div></div></div>'
+
     def RGBtoHex(self, r, g, b):
+        """
+        Convert a rgb color in HEX value, useful for the Progress Bar Color
+        """
         return "#%02X%02X%02X" % (r, g, b)
+
 
 class DBquery(object):
     """
@@ -147,14 +147,14 @@ class DBquery(object):
     def add_param(self, column_name, search_input, search_type=""):
         if (self.query == ""):
             if search_input.find("-") != -1:
-                self.query += column_name+search_type+':"'+search_input+'"'
+                self.query += column_name + search_type + ':"' + search_input + '"'
             else:
-                self.query += column_name+search_type+':'+search_input
+                self.query += column_name + search_type + ':' + search_input
         else:
             if search_input.find("-") != -1:
-                self.query += '+AND+'+column_name+search_type+':"'+search_input+'"'
+                self.query += '+AND+' + column_name + search_type + ':"' + search_input + '"'
             else:
-                self.query += '+AND+'+column_name+search_type+':'+search_input
+                self.query += '+AND+' + column_name + search_type + ':' + search_input
 
     def finalize_query(self, n_results, page, sorted_column, sort_order):
         __query = self.query
@@ -164,9 +164,9 @@ class DBquery(object):
             else:
                 __query += "&sort=\\"
             __query += self.__column_names[int(sorted_column)]
-        __query += "&limit=%s" %(n_results)
-        skip_num = (page-1)*n_results
-        __query += "&skip=%s" %(skip_num)
+        __query += "&limit=%s" % (n_results)
+        skip_num = (page - 1) * n_results
+        __query += "&skip=%s" % (skip_num)
         return __query
 
     def graph_query(self, sorted_column, sort_order):
@@ -178,122 +178,147 @@ class DBquery(object):
                 __query += "&sort=\\"
             __query += self.__column_names[int(sorted_column)]
         return __query
-    
-class HomePage(object):  
-    #index
-    #Main function generate the main page
-    def index(self, ResToPrint=50, Page=1, SortValue="", Order=False, ID="", EE="", Ty="", SR="", Pr="", RJ="", RD="", EID="", RN="", SuD="", ED="", StD="", PI="", Ca="", DN="", St="", Re="", Pa="", PP="", CD="", AJ="", PJ="", MT="", PF="", Col="15-20-7-11-2-8-4-5-23-9" , Graphic=""): 
-        ### main method to generate/return HTML page ###
 
-        t0 = time.time()  ###original Col="15-20-14-10-7-11-2-8-16-4-5-23"
+
+class HomePage(object):
+    def index(self, ResToPrint=50, Page=1, SortValue="", Order=False, ID="", EE="", Ty="", SR="", Pr="", RJ="", RD="", EID="", RN="", SuD="", ED="", StD="", PI="", Ca="", DN="", St="", Re="", Pa="", PP="", CD="", AJ="", PJ="", MT="", PF="", Col="15-20-7-11-2-8-4-5-23-9", Graphic=""):
+        """
+        Main function generate the main page. Main method to generate/return HTML page
+        """
+        t0 = time.time()  # original Col="15-20-14-10-7-11-2-8-16-4-5-23"
         MustDrawGraphics = 0
         ColumnForGraph = []
         EventExpectedTot = 0
         EventATM = 0
         ListSearch = []
         ListOfS = []
-        __query = DBquery();
-        #make a db query here! but limit & skip parametters
+        __query = DBquery()
+        # make a db query here! but limit & skip parametters
         if(Graphic != ""):
             ColumnForGraph = Graphic.split("-")
             MustDrawGraphics = len(ColumnForGraph)
+
         ListOfColumns = Col.split("-")
         if(ID != ""):
             ListSearch.append(ID)
             ListOfS.append(0)
+
         if(EE != ""):
             ListSearch.append(EE)
             ListOfS.append(1)
             __query.add_param("EE", EE, "<int>")
+
         if(Ty != ""):
             ListSearch.append(Ty)
             ListOfS.append(2)
             __query.add_param("Ty", Ty)
+
         if(SR != ""):
             ListSearch.append(SR)
             ListOfS.append(3)
             __query.add_param("SR", SR)
+
         if(Pr != ""):
             ListSearch.append(Pr)
             ListOfS.append(4)
             __query.add_param("Pr", Pr, "<int>")
-        if(RJ != ""):  
+
+        if(RJ != ""):
             ListSearch.append(RJ)
             ListOfS.append(5)
             __query.add_param("RJ", RJ, "<int>")
+
         if(RD != ""):
             ListSearch.append(RD)
             ListOfS.append(6)
             __query.add_param("RD", RD, "<int>")
+
         if(EID != ""):
             ListSearch.append(EID)
             ListOfS.append(7)
             __query.add_param("EID", EID, "<int>")
+
         if(RN != ""):
             ListSearch.append(RN)
             ListOfS.append(8)
             __query.add_param("RN", RN)
+
         if(SuD != ""):
             ListSearch.append(SuD)
             ListOfS.append(9)
             __query.add_param("SuD", SuD)
+
         if(ED != ""):
             ListSearch.append(ED)
             ListOfS.append(10)
             __query.add_param("ED", ED, "<int>")
+
         if(StD != ""):
             ListSearch.append(StD)
             ListOfS.append(11)
             __query.add_param("StD", StD)
+
         if(PI != ""):
             ListSearch.append(PI)
             ListOfS.append(12)
             __query.add_param("PI", PI)
+
         if(Ca != ""):
             ListSearch.append(Ca)
             ListOfS.append(13)
             __query.add_param("Ca", Ca)
+
         if(DN != ""):
             ListSearch.append(DN)
             ListOfS.append(14)
             __query.add_param("DN", DN)
+
         if(St != ""):
             ListSearch.append(St)
             ListOfS.append(15)
             __query.add_param("St", St)
+
         if(Re != ""):
             ListSearch.append(Re)
             ListOfS.append(16)
             __query.add_param("Re", Re, "<int>")
+
         if(Pa != ""):
             ListSearch.append(Pa)
             ListOfS.append(17)
-            ##__query.add_param("SuD", SuD) #??? currently non working 
+            # __query.add_param("SuD", SuD) #??? currently non working
+
         if(PP != ""):
             ListSearch.append(PP)
             ListOfS.append(18)
             __query.add_param("PP", PP, "<int>")
+
         if(CD != ""):
             ListSearch.append(CD)
             ListOfS.append(19)
             __query.add_param("CD", CD, "<double>")
+
         if(AJ != ""):
             ListSearch.append(AJ)
             ListOfS.append(20)
             __query.add_param("AJ", AJ, "<int>")
+
         if(PJ != ""):
             ListSearch.append(PJ)
             ListOfS.append(21)
             __query.add_param("PJ", PJ, "<int>")
+
         if(MT != ""):
             ListSearch.append(MT)
             ListOfS.append(22)
             __query.add_param("MT", MT)
+
         if(PF != ""):
             ListSearch.append(PF)
             ListOfS.append(23)
-            ###??? querying for performance must be improved -- searching in couchdb-lucene over object
-        try :
+            # ??? querying for performance must be improved -- searching in couchdb-lucene over object
+
+        try:
             ResToPrint = int(''.join(ResToPrint))
             if(ResToPrint < 0):
                 ResToPrint = ResToPrint * -1
@@ -306,12 +331,13 @@ class HomePage(object):
             ResToPrint = 50
             Page = 1
             SortValue = ""
-        __page_offset = (Page-1)*ResToPrint
+        __page_offset = (Page - 1) * ResToPrint
+
         if len(ListSearch) != 0:
-            number_of_results = Initializer().Actualization('_fti/local/stats/_design/lucene/search?q='+__query.finalize_query(ResToPrint, Page, SortValue, Order)+'&include_docs=true')
+            number_of_results = Initializer().Actualization('_fti/local/stats/_design/lucene/search?q=' + __query.finalize_query(ResToPrint, Page, SortValue, Order) + '&include_docs=true')
         else:
-            number_of_results = Initializer().Actualization('stats/_all_docs?include_docs=true&skip=%s&limit=%s' %(__page_offset, ResToPrint))
-        try :
+            number_of_results = Initializer().Actualization('stats/_all_docs?include_docs=true&skip=%s&limit=%s' % (__page_offset, ResToPrint))
+        try:
             """
             if(len(ListOfS) > 0):
                 ListTemp = list(ListOfSimulations)
@@ -319,7 +345,7 @@ class HomePage(object):
                 #while(Increment < len(ListSearch) ):
                 #    ''.join(ListSearch[Increment])
                 #    Increment = Increment + 1
-                Increment = 0    
+                Increment = 0
                 while(Increment < len(ListOfS)):
                     print("Iteration %s"%(Increment))
                     IncrementC = 0
@@ -329,9 +355,9 @@ class HomePage(object):
                             if(ExprToSearch.search(ListTemp[IncrementC].Attributs[ListOfAttributs[ListOfS[Increment]]] ) == None):
                                 ListTemp.remove(ListTemp[IncrementC])
                                 IncrementC = IncrementC - 1
-                            else:   
+                            else:
                                 if(ListTemp[Increment].Attributs["PDMV expected events"] > 0):
-                                    EventExpectedTot = EventExpectedTot + ListTemp[IncrementC].Attributs["PDMV expected events"] 
+                                    EventExpectedTot = EventExpectedTot + ListTemp[IncrementC].Attributs["PDMV expected events"]
                                     EventATM = EventATM + ListTemp[IncrementC].Attributs["PDMV evts in DAS"]
                             IncrementC = IncrementC + 1
                     else:
@@ -339,14 +365,14 @@ class HomePage(object):
                             if(self.ExprSearchEngine(ListSearch[Increment], ListTemp[IncrementC].Attributs[ListOfAttributs[ListOfS[Increment]]]) == 0):
                                 ListTemp.remove(ListTemp[IncrementC])
                                 IncrementC = IncrementC - 1
-                            else:   
+                            else:
                                 if(ListTemp[Increment].Attributs["PDMV expected events"] > 0):
-                                    EventExpectedTot = EventExpectedTot + ListTemp[Increment].Attributs["PDMV expected events"] 
+                                    EventExpectedTot = EventExpectedTot + ListTemp[Increment].Attributs["PDMV expected events"]
                                     EventATM = EventATM + ListTemp[Increment].Attributs["PDMV evts in DAS"]
                             IncrementC = IncrementC + 1
                     Increment = Increment + 1
 
-                    
+
             else:
                 i = 0
                 ListTemp = ListOfSimulations
@@ -357,8 +383,8 @@ class HomePage(object):
 
                     i = i + 1
             """
-            ListTemp = list(ListOfSimulations) #list of data
-            #Lets get statistical data for graphs!
+            ListTemp = list(ListOfSimulations)  # list of data
+            # Lets get statistical data for graphs!
             if len(ListSearch) != 0:
                 __url = 'http://vocms084.cern.ch:5984/' + '_fti/local/stats/_design/lucene/search?q=' + __query.graph_query(SortValue, Order) + '&limit=100000'
                 print __url
@@ -368,24 +394,23 @@ class HomePage(object):
                     EventExpectedTot += item["EE"]
                     EventATM += item["EID"]
             else:
-                ### stats data ????
+                # stats data ????
                 for item in ListTemp:
                     EventExpectedTot += item.Attributs["PDMV expected events"]
                     EventATM += item.Attributs["PDMV evts in DAS"]
 
-            #anyways, calculate the total number of events and expected from selected
-
-                
-        except :
+            # anyways, calculate the total number of events and expected from selected
+        except:
             print "failing EventExpectedTot and EventATM"
             print traceback.format_exc()
             pass
-        #print "Counting:",EventATM,EventExpectedTot
-        if EventExpectedTot==0:
+
+        # print "Counting:",EventATM,EventExpectedTot
+        if EventExpectedTot == 0:
             CompletionGauge = 0
         else:
             CompletionGauge = int(float(EventATM * 100.0) / float(EventExpectedTot))
-            
+
         if (CompletionGauge > 100):
             CompletionGauge = 100
         if (SortValue != ""):
@@ -393,23 +418,26 @@ class HomePage(object):
                 ListTemp.sort(key=itemgetter(ListOfAttributs[int(SortValue) - 1]), reverse=True)
             else:
                 ListTemp.sort(key=itemgetter(ListOfAttributs[int(SortValue) - 1]), reverse=False)
-        TableHTML = self.ReturnResult(ListTemp, ID, EE, Ty, SR, Pr, RJ, RD, EID, RN, SuD, ED, StD, PI, Ca, DN, St, Re, Pa, PP, CD, AJ, PJ, MT, PF, ListOfColumns,Page,ResToPrint) ##returns table structure
+
+        TableHTML = self.ReturnResult(ListTemp, ID, EE, Ty, SR, Pr, RJ, RD, EID, RN, SuD, ED, StD, PI, Ca, DN, St, Re, Pa, PP, CD, AJ, PJ, MT, PF, ListOfColumns, Page, ResToPrint)  # returns table structure
         if len(ListSearch) != 0:
             HistoCompl = self.ScaleAndValue(__stats_data, 19, 20, 100)
         else:
             HistoCompl = self.ScaleAndValueStandard(ListTemp, 19, 20, 100)
-        i = 0
+
         HistoPerso = ()
         if (MustDrawGraphics == 1):
             if len(ListSearch) != 0:
                 HistoPerso = self.ScaleAndValue(__stats_data, int(ColumnForGraph[0]) - 1, 20)
             else:
                 HistoPerso = self.ScaleAndValueStandard(ListTemp, int(ColumnForGraph[0]) - 1, 20)
+
         elif (MustDrawGraphics == 2):
             if len(ListSearch) != 0:
                 HistoPerso = self.ScaleAndValueScatter(__stats_data, int(ColumnForGraph[0]) - 1, int(ColumnForGraph[1]) - 1, 20)
             else:
                 HistoPerso = self.ScaleAndValueScatterStandard(ListTemp, int(ColumnForGraph[0]) - 1, int(ColumnForGraph[1]) - 1, 20)
+
         return '''
         <!DOCTYPE HTML>
         <html>
@@ -425,18 +453,18 @@ class HomePage(object):
         </head>
         <body onKeyDown="IsGraph(event.keyCode);" onKeyPress="if (event.keyCode == 13) document.ACMTWSmenu.submit();">
         <div id='holder'></div>
-        <div id='holderB'></div> 
+        <div id='holderB'></div>
         <h3 class="title">A CMS Monitoring Website</h3>
         <div class="headermenu"><h4>Menu</h4></div>
         <form name="ACMTWSmenu" action="." method="get">
         <div class="menu">
         Result to print :<input class="inme" type="number" name="ResToPrint" value="''' + str(ResToPrint) + '''"/><br>
-        Page :  <input class="inme" type="number" name="Page" value="''' + str(Page) + '''" /> 
-        <input  type="hidden" name="SortValue" value="''' +  SortValue + '''">
-        <input  type="hidden" name="Order" value="''' + str(Order) + '''"><br><br><br><a href="#" onclick="document.forms['ACMTWSmenu'].submit();">Print</a>  
+        Page :  <input class="inme" type="number" name="Page" value="''' + str(Page) + '''" />
+        <input  type="hidden" name="SortValue" value="''' + SortValue + '''">
+        <input  type="hidden" name="Order" value="''' + str(Order) + '''"><br><br><br><a href="#" onclick="document.forms['ACMTWSmenu'].submit();">Print</a>
         <input  type="hidden" name="Graphic" value="">
         <input  type="hidden" name="Col" value="''' + Col + '''">
-        <input  type="submit" style="display:none"/> 
+        <input  type="submit" style="display:none"/>
          <a href='#' onclick='if(ListColToDRaw[1] != ""){
                 document.forms["ACMTWSmenu"].Graphic.value = ListColToDRaw[0] + "-" + ListColToDRaw[1];
             } else {
@@ -446,14 +474,14 @@ class HomePage(object):
         <span id="AccordionContainer">
         <span onclick="runAccordion(1);">
         <span class="PanelA">
-        <a>Columns</a> 
+        <a>Columns</a>
         </span>
         </span>
         <span  id="PanelAContent">
         Dataset name <input type="checkbox"  onClick="AddCol('15');" ''' + self.CheckedOrNot(ListOfColumns, 15) + '''/><br>
         Completion DAS <input type="checkbox" onClick="AddCol('20');" ''' + self.CheckedOrNot(ListOfColumns, 20) + '''/><br>
         Campaign <input type="checkbox" onClick="AddCol('14');" ''' + self.CheckedOrNot(ListOfColumns, 14) + '''/><br>
-        Submission date <input type="checkbox" onClick="AddCol('10');" ''' + self.CheckedOrNot(ListOfColumns, 10) + '''/><br>    
+        Submission date <input type="checkbox" onClick="AddCol('10');" ''' + self.CheckedOrNot(ListOfColumns, 10) + '''/><br>
         Running days <input type="checkbox" onClick="AddCol('7');" ''' + self.CheckedOrNot(ListOfColumns, 7) + '''/><br>
         ETA DAS <input type="checkbox" onClick="AddCol('11');" ''' + self.CheckedOrNot(ListOfColumns, 11) + '''/><br>
         Expected Events <input type="checkbox" onClick="AddCol('2');" ''' + self.CheckedOrNot(ListOfColumns, 2) + '''/><br>
@@ -475,18 +503,18 @@ class HomePage(object):
         Performance report <input type="checkbox" onClick="AddCol('24');" ''' + self.CheckedOrNot(ListOfColumns, 24) + '''/><br>
         </span>
         </span>
-        
+
         </div>
-        
+
         <table>
         ''' + TableHTML + '''</table>
         </form>
-      
+
         <div id='Graphic' onClick="var Graph = document.getElementById('Graphic');Graph.style.visibility='hidden';document.ACMTWSmenu.Graphic.value=''" ;">
         </div>
         <script>
-              HistogramC(''' + str(HistoCompl[0]) + ''','''+str(HistoCompl[1])+''',"#holder",600,250,"'''+str(HistoCompl[2])+'''");
-              createGauge("#holderB", "Completion",''' + str(CompletionGauge) + ''');   
+              HistogramC(''' + str(HistoCompl[0]) + ''',''' + str(HistoCompl[1]) + ''',"#holder",600,250,"''' + str(HistoCompl[2]) + '''");
+              createGauge("#holderB", "Completion",''' + str(CompletionGauge) + ''');
         ''' + self.DrawMeAGraph(MustDrawGraphics, HistoPerso) + '''
         </script>
         <p>Displaying from %s to %s out of %s results in (%s secons)
@@ -495,11 +523,10 @@ class HomePage(object):
         </p>
         </body>
         </html>
-        '''%(__page_offset, __page_offset+ResToPrint, number_of_results, str(time.time() - t0))
+        ''' % (__page_offset, __page_offset + ResToPrint, number_of_results, str(time.time() - t0))
 
-        
     def DrawMeAGraph(self, NbVar, ValueGraphA=""):
-        Javascript = "";
+        Javascript = ""
         if(NbVar == 1):
             Javascript = '''  Val=''' + str(ValueGraphA) + '''
             GraphPopup = document.getElementById('Graphic');
@@ -508,7 +535,7 @@ class HomePage(object):
             HistogramC(''' + str(ValueGraphA[0]) + ''',''' + str(ValueGraphA[1]) + ''',"#Graphic",0.8*SizeThis[0],0.75*SizeThis[1],"''' + str(ValueGraphA[2]) + '''");
             GraphPopup.on
             window.onkeydown = function(event){
-           
+
             if(GraphPopup.style.visibility=='visible')
             {
                 if(event.keyCode==37)
@@ -533,7 +560,7 @@ class HomePage(object):
             function Redraw(){
             GraphPopup = document.getElementById('Graphic');
             GraphPopup.style.visibility='visible';
-            GraphPopup.innerHTML = "" ; 
+            GraphPopup.innerHTML = "" ;
             var SizeThis= GetSizeWindow();
             HistogramC(''' + str(ValueGraphA[0]) + ''',''' + str(ValueGraphA[1]) + ''',"#Graphic",0.8*SizeThis[0],0.75*SizeThis[1],"''' + str(ValueGraphA[2]) + '''");
             }
@@ -541,10 +568,10 @@ class HomePage(object):
             Redraw();}'''
         elif(NbVar == 2):
             Javascript = '''
-            Data='''+str(ValueGraphA[0])+'''
-            ScaleA='''+str(ValueGraphA[1])+'''
-            ScaleB='''+str(ValueGraphA[2])+'''
-            Label="'''+str(ValueGraphA[3])+'''"
+            Data=''' + str(ValueGraphA[0]) + '''
+            ScaleA=''' + str(ValueGraphA[1]) + '''
+            ScaleB=''' + str(ValueGraphA[2]) + '''
+            Label="''' + str(ValueGraphA[3]) + '''"
             GraphPopup = document.getElementById('Graphic');
             GraphPopup.style.visibility='visible';
             var SizeThis= GetSizeWindow();
@@ -552,12 +579,13 @@ class HomePage(object):
             window.onresize = function(event) {
             GraphPopup = document.getElementById('Graphic');
             GraphPopup.style.visibility='visible';
-            GraphPopup.innerHTML = "" ; 
+            GraphPopup.innerHTML = "" ;
             var SizeThis= GetSizeWindow();
             ScatterPlotC(Data,ScaleA,ScaleB,'#Graphic',0.8*SizeThis[0], 0.75*SizeThis[1],Label);
-            }'''    
+            }'''
+
         return Javascript
-    
+
     def ScaleAndValueScatter(self, ListA, IndA, IndB, Bins):
         __short_attr_names = ["ID", "EE", "Ty", "SR", "Pr", "RJ", "RD", "EID", "RN", "SuD", "ED", "StD", "PI", "Ca", "DN", "St", "Re", "Pa", "PP", "CD", "AJ", "PJ", "MT", "PF"]
         if (len(ListA) > 0):
@@ -572,8 +600,10 @@ class HomePage(object):
             ValB = ListA[0][__short_attr_names[IndB]]
             if (type(ValA) == type(0) or (type(ValA) == type(0.0))):
                 TypeA = 1
+
             if (type(ValB) == type(0) or (type(ValB) == type(0.0))):
                 TypeB = 1
+
             if (TypeA):
                 i = 0
                 while (i < len(ListA)):
@@ -597,28 +627,31 @@ class HomePage(object):
             i = 0
             while (i < len(ListA)):
                 if (TypeA and TypeB):
-                    ValA = ListA[i][__short_attr_names[IndA]]//StepA
-                    ValB = ListA[i][__short_attr_names[IndB]]//StepB
+                    ValA = ListA[i][__short_attr_names[IndA]] // StepA
+                    ValB = ListA[i][__short_attr_names[IndB]] // StepB
                 elif (TypeA):
-                    ValA = ListA[i][__short_attr_names[IndA]]//StepA
+                    ValA = ListA[i][__short_attr_names[IndA]] // StepA
                     ValB = ListA[i][__short_attr_names[IndB]]
                 elif (TypeB):
                     ValA = ListA[i][__short_attr_names[IndA]]
-                    ValB = ListA[i][__short_attr_names[IndB]]//StepB
+                    ValB = ListA[i][__short_attr_names[IndB]] // StepB
                 else:
                     ValA = ListA[i][__short_attr_names[IndA]]
                     ValB = ListA[i][__short_attr_names[IndB]]
-                if (TypeA and ValA >= Bins):
-                    ValA = Bins-1
-                if (TypeB and ValB >= Bins):
-                    ValB = Bins-1
-                Indice = self.IsTupleInData(Data, ValA, ValB)
 
+                if (TypeA and ValA >= Bins):
+                    ValA = Bins - 1
+
+                if (TypeB and ValB >= Bins):
+                    ValB = Bins - 1
+
+                Indice = self.IsTupleInData(Data, ValA, ValB)
                 if (Indice == -1):
                     Data.append([ValA, ValB, 1])
                 else:
                     Data[Indice][2] = Data[Indice][2] + 1
-                i = i + 1;
+                i = i + 1
+
             ScaleA = []
             ScaleB = []
             if (TypeA):
@@ -626,13 +659,14 @@ class HomePage(object):
                 while (i <= (Bins * StepA) + 1):
                     ScaleA.append(i)
                     i = i + StepA
+
             if (TypeB):
                 i = 0
                 while (i <= Bins * StepB):
                     ScaleB.append(i)
                     i = i + StepB
 
-            return (Data, ScaleA,ScaleB, str(ListOfAttributs[IndA]+"/"+ListOfAttributs[IndB]))
+            return (Data, ScaleA, ScaleB, str(ListOfAttributs[IndA] + "/" + ListOfAttributs[IndB]))
 
     def ScaleAndValueScatterStandard(self, ListA, IndA, IndB, Bins):
         if (len(ListA) > 0):
@@ -647,8 +681,10 @@ class HomePage(object):
             ValB = ListA[0].Attributs[ListOfAttributs[IndB]]
             if (type(ValA) == type(0) or (type(ValA) == type(0.0))):
                 TypeA = 1
+
             if (type(ValB) == type(0)or(type(ValB) == type(0.0))):
                 TypeB = 1
+
             if (TypeA):
                 i = 0
                 while (i < len(ListA)):
@@ -672,28 +708,32 @@ class HomePage(object):
             i = 0
             while (i < len(ListA)):
                 if (TypeA and TypeB):
-                    ValA = ListA[i].Attributs[ListOfAttributs[IndA]]//StepA
-                    ValB = ListA[i].Attributs[ListOfAttributs[IndB]]//StepB
+                    ValA = ListA[i].Attributs[ListOfAttributs[IndA]] // StepA
+                    ValB = ListA[i].Attributs[ListOfAttributs[IndB]] // StepB
                 elif (TypeA):
-                    ValA = ListA[i].Attributs[ListOfAttributs[IndA]]//StepA
+                    ValA = ListA[i].Attributs[ListOfAttributs[IndA]] // StepA
                     ValB = ListA[i].Attributs[ListOfAttributs[IndB]]
                 elif (TypeB):
                     ValA = ListA[i].Attributs[ListOfAttributs[IndA]]
-                    ValB = ListA[i].Attributs[ListOfAttributs[IndB]]//StepB
+                    ValB = ListA[i].Attributs[ListOfAttributs[IndB]] // StepB
                 else:
                     ValA = ListA[i].Attributs[ListOfAttributs[IndA]]
                     ValB = ListA[i].Attributs[ListOfAttributs[IndB]]
+
                 if (TypeA and ValA >= Bins):
-                    ValA = Bins-1
+                    ValA = Bins - 1
+
                 if (TypeB and ValB >= Bins):
                     ValB = Bins - 1
+
                 Indice = self.IsTupleInData(Data, ValA, ValB)
-                
                 if (Indice == -1):
                     Data.append([ValA, ValB, 1])
                 else:
                     Data[Indice][2] = Data[Indice][2] + 1
-                i = i + 1;
+
+                i = i + 1
+
             ScaleA = []
             ScaleB = []
             if (TypeA):
@@ -707,7 +747,7 @@ class HomePage(object):
                     ScaleB.append(i)
                     i = i + StepB
 
-            return (Data, ScaleA,ScaleB, str(ListOfAttributs[IndA]+"/"+ListOfAttributs[IndB]))
+            return (Data, ScaleA, ScaleB, str(ListOfAttributs[IndA] + "/" + ListOfAttributs[IndB]))
 
     def ScaleAndValueStandard(self, ListA, Ind, Bins, Max=0):
         i = 0
@@ -716,14 +756,16 @@ class HomePage(object):
         if (len(ListA) > 0):
             if (type(ListA[i].Attributs[ListOfAttributs[Ind]]) == type(0) or (type(ListA[i].Attributs[ListOfAttributs[Ind]]) == type(0.0))):
                 while (i < Bins):
-                    ValuesA.append(0);
+                    ValuesA.append(0)
                     i = i + 1
+
                 i = 0
                 if (Max == 0):
                     while (i < len(ListA)):
                         if (Max < ListA[i].Attributs[ListOfAttributs[Ind]]):
                             Max = ListA[i].Attributs[ListOfAttributs[Ind]]
                         i = i + 1
+
                 i = 0
                 Step = float(Max) / float(Bins)
                 Round = str(Step).split(".")
@@ -736,12 +778,14 @@ class HomePage(object):
                     elif (ListA[i].Attributs[ListOfAttributs[Ind]] < 0):
                         ValuesA[0] = ValuesA[0] + 1
                     else:
-                        ValuesA[int(ListA[i].Attributs[ListOfAttributs[Ind]] // Step)] = ValuesA[int(ListA[i].Attributs[ListOfAttributs[Ind]] // Step)] +1
+                        ValuesA[int(ListA[i].Attributs[ListOfAttributs[Ind]] // Step)] = ValuesA[int(ListA[i].Attributs[ListOfAttributs[Ind]] // Step)] + 1
+
                     i = i + 1
                 i = 0
                 while (i <= Bins * Step):
                     ScaleA.append(i)
                     i = i + Step
+
             else:
                 while (i < len(ListA)):
                     if (ScaleA.count(str(ListA[i].Attributs[ListOfAttributs[Ind]])) == 0):
@@ -749,52 +793,60 @@ class HomePage(object):
                         ValuesA.append(1)
                     else:
                         ValuesA[ScaleA.index(str(ListA[i].Attributs[ListOfAttributs[Ind]]))] = ValuesA[ScaleA.index(str(ListA[i].Attributs[ListOfAttributs[Ind]]))] + 1
+
                     i = i + 1
-        return (ValuesA, ScaleA, ListOfAttributs[Ind]);
+
+        return (ValuesA, ScaleA, ListOfAttributs[Ind])
 
     def IsTupleInData(self, Data, ValA, ValB):
         i = 0
         while(i < len(Data)):
             if((Data[i][0] == ValA)and(Data[i][1] == ValB)):
                 return i
+
             i = i + 1
+
         return -1
-                
-                    
+
     def ScaleAndValue(self, ListA, Ind, Bins, Max=0):
         __short_attr_names = ["ID", "EE", "Ty", "SR", "Pr", "RJ", "RD", "EID", "RN", "SuD", "ED", "StD", "PI", "Ca", "DN", "St", "Re", "Pa", "PP", "CD", "AJ", "PJ", "MT", "PF"]
         i = 0
         ValuesA = []
         ScaleA = []
         if(len(ListA) > 0):
-            if(type(ListA[i][__short_attr_names[Ind]]) == type(0)or(type(ListA[i][__short_attr_names[Ind]]) == type(0.0))):
+            if(type(ListA[i][__short_attr_names[Ind]]) == type(0) or (type(ListA[i][__short_attr_names[Ind]]) == type(0.0))):
                 while(i < Bins):
-                    ValuesA.append(0);
+                    ValuesA.append(0)
                     i = i + 1
+
                 i = 0
                 if(Max == 0):
                     while(i < len(ListA)):
                         if(Max < ListA[i][__short_attr_names[Ind]]):
                             Max = ListA[i][__short_attr_names[Ind]]
                         i = i + 1
+
                 i = 0
                 Step = float(Max) / float(Bins)
                 Round = str(Step).split(".")
                 if((len(Round) > 1)and(int(Round[1]) > 0)):
                     Step = int(Round[0]) + 1
-                
+
                 while(i < len(ListA)):
                     if(ListA[i][__short_attr_names[Ind]] >= Max):
                         ValuesA[Bins - 1] = ValuesA[Bins - 1] + 1
                     elif(ListA[i][__short_attr_names[Ind]] < 0):
                         ValuesA[0] = ValuesA[0] + 1
                     else:
-                        ValuesA[int(ListA[i][__short_attr_names[Ind]] // Step)] = ValuesA[int(ListA[i][__short_attr_names[Ind]] // Step)] +1
+                        ValuesA[int(ListA[i][__short_attr_names[Ind]] // Step)] = ValuesA[int(ListA[i][__short_attr_names[Ind]] // Step)] + 1
+
                     i = i + 1
-                i=0
+
+                i = 0
                 while(i <= Bins * Step):
                     ScaleA.append(i)
                     i = i + Step
+
             else:
                 while(i < len(ListA)):
                     if(ScaleA.count(str(ListA[i][__short_attr_names[Ind]])) == 0):
@@ -802,15 +854,17 @@ class HomePage(object):
                         ValuesA.append(1)
                     else:
                         ValuesA[ScaleA.index(str(ListA[i][__short_attr_names[Ind]]))] = ValuesA[ScaleA.index(str(ListA[i][__short_attr_names[Ind]]))] + 1
+
                     i = i + 1
-        return (ValuesA, ScaleA, ListOfAttributs[Ind]);
-        
+
+        return (ValuesA, ScaleA, ListOfAttributs[Ind])
+
     def MaxProtected(self, List):
         if(len(List) > 0):
             return str(max(List))
-        else :
+        else:
             return "0"
-        
+
     def CheckedOrNot(self, listA, eltofind):
         String = ""
         i = 0
@@ -818,10 +872,13 @@ class HomePage(object):
             if(int(listA[i]) == eltofind):
                 String = 'checked="checked"'
                 i = len(listA)
+
             i = i + 1
+
         return String
+
     def ExprSearchEngine(self, expr, chaine):
-        try :
+        try:
             expr = expr.lower()
             expr = expr.replace("value", "")
             ListConditionOr = expr.split("or")
@@ -830,7 +887,7 @@ class HomePage(object):
             while(IncrementA < len(ListConditionOr)):
                 ListConditionAnd = ListConditionOr[IncrementA].split("and")
                 IncrementB = 0
-                PreVictory = 1 
+                PreVictory = 1
                 while(IncrementB < len(ListConditionAnd)):
                     if(PreVictory == 1):
                         expr = ListConditionAnd[IncrementB]
@@ -841,54 +898,67 @@ class HomePage(object):
                             if(Position == 0):
                                 if(float(expr) > float(chaine)):
                                     PreVictory = 0
+
                             else:
                                 if(float(expr) < float(chaine)):
                                     PreVictory = 0
+
                         elif(expr.find("<=") != -1):
                             Position = expr.find("<=")
                             expr = expr.replace("<=", "")
                             if(Position == 0):
                                 if(float(expr) < float(chaine)):
                                     PreVictory = 0
+
                             else:
                                 if(float(expr) > float(chaine)):
                                     PreVictory = 0
+
                         elif(expr.find("<") != -1):
                             Position = expr.find("<")
                             expr = expr.replace("<", "")
                             if(Position == 0):
                                 if(float(expr) <= float(chaine)):
                                     PreVictory = 0
+
                             else:
                                 if(float(expr) >= float(chaine)):
                                     PreVictory = 0
+
                         elif(expr.find(">") != -1):
                             Position = expr.find(">")
                             expr = expr.replace(">", "")
                             if(Position == 0):
                                 if(float(expr) >= float(chaine)):
                                     PreVictory = 0
+
                             else:
                                 if(float(expr) <= float(chaine)):
                                     PreVictory = 0
+
                         else:
                             expr = expr.replace("=", "")
                             if(float(expr) != float(chaine)):
                                 PreVictory = 0
+
                     IncrementB = IncrementB + 1
+
                 if(PreVictory == 1):
                     Victory = 1
                     IncrementB = len(ListConditionAnd)
                     IncrementA = len(ListConditionOr)
-                IncrementA = IncrementA + 1 
+
+                IncrementA = IncrementA + 1
+
             return Victory
+
         except:
             return 1
-    
-    def ReturnResult(self, ListB, ID, EE, Ty, SR, Pr, RJ, RD, EID, RN, SuD, ED, StD, PI, Ca, DN, St, Re, Pa, PP, CD, AJ, PJ, MT, PF, ListOfColumns,Page,ResultToPrint):
+
+    def ReturnResult(self, ListB, ID, EE, Ty, SR, Pr, RJ, RD, EID, RN, SuD, ED, StD, PI, Ca, DN, St, Re, Pa, PP, CD, AJ, PJ, MT, PF, ListOfColumns, Page, ResultToPrint):
         String = "<tr>"
         i = 0
-        while(i < len(ListOfColumns)): 
+        while(i < len(ListOfColumns)):
             if(int(ListOfColumns[i]) == 1):
                 String = String + '''<th id="S1"><p><span class="s2" onClick="SortChangeValueB('1','False');"></span>  <span onClick="SelectCol('1');">ID  </span><span class="s3" onClick="SortChangeValueB('1','True');"></span></p><input type="text" onClick="" name="ID" value="''' + str(ID) + '''"/></th>'''
             if(int(ListOfColumns[i]) == 2):
@@ -907,7 +977,7 @@ class HomePage(object):
                 String = String + '''<th id="S8"><p><span class="s2" onClick="SortChangeValueB('8','False');"></span> <span onClick="SelectCol('8');"> Events DAS  </span><span class="s3" onClick="SortChangeValueB('8','True');"></span></p><input type="text" onClick="" name="EID" value="''' + str(EID) + '''"/></th>'''
             if(int(ListOfColumns[i]) == 9):
                 String = String + '''<th id="S9"><p><span class="s2" onClick="SortChangeValueB('9','False');"></span> <span onClick="SelectCol('9');"> Request name  </span><span class="s3" onClick="SortChangeValueB('9','True');"></span></p><input type="text" onClick="" name="RN" value="''' + str(RN) + '''"/></th>'''
-            if(int(ListOfColumns[i]) == 10):    
+            if(int(ListOfColumns[i]) == 10):
                 String = String + '''<th id="S10"><p><span class="s2" onClick="SortChangeValueB('10','False');"></span> <span onClick="SelectCol('10');"> Submission date  </span><span class="s3" onClick="SortChangeValueB('10','True');"></span></p><input type="text" onClick="" name="SuD" value="''' + str(SuD) + '''"/></th>'''
             if(int(ListOfColumns[i]) == 11):
                 String = String + '''<th id="S11"><p><span class="s2" onClick="SortChangeValueB('11','False');"></span>  <span onClick="SelectCol('11');">ETA DAS  </span><span class="s3" onClick="SortChangeValueB('11','True');"></span></p><input type="text" onClick="" name="ED" value="''' + str(ED) + '''"/></th>'''
@@ -923,8 +993,8 @@ class HomePage(object):
                 String = String + '''<th  id="S16"><p><span class="s2" onClick="SortChangeValueB('16','False');"></span>  <span onClick="SelectCol('16');">Status </span> <span class="s3" onClick="SortChangeValueB('16','True');"></span></p><input type="text" onClick="" name="St" value="''' + str(St) + '''"/></th>'''
             if(int(ListOfColumns[i]) == 17):
                 String = String + '''<th  id="S17"><p><span class="s2" onClick="SortChangeValueB('17','False');"></span>  <span onClick="SelectCol('17');">Request </span> <span class="s3" onClick="SortChangeValueB('17','True');"></span></p><input type="text" onClick="" name="Re" value="''' + str(Re) + '''"/></th>'''
-            #if(int(ListOfColumns[i]) == 18):
-                #String = String + '''<th  id="S18"><p><span class="s2" onClick="SortChangeValueB('18','False');"></span>  <span onClick="SelectCol('18');">Pattern </span> <span class="s3" onClick="SortChangeValueB('18','True');"></span></p><input type="text" onClick="" name="Pa" value="''' + str(Pa) + '''"/></th>''' # not used anymore
+            # if(int(ListOfColumns[i]) == 18):
+                # String = String + '''<th  id="S18"><p><span class="s2" onClick="SortChangeValueB('18','False');"></span>  <span onClick="SelectCol('18');">Pattern </span> <span class="s3" onClick="SortChangeValueB('18','True');"></span></p><input type="text" onClick="" name="Pa" value="''' + str(Pa) + '''"/></th>''' # not used anymore
             if(int(ListOfColumns[i]) == 19):
                 String = String + '''<th  id="S19"><p><span class="s2" onClick="SortChangeValueB('19','False');"></span>  <span onClick="SelectCol('19');">Present Priority </span> <span class="s3" onClick="SortChangeValueB('19','True');"></span></p><input type="text" onClick="" name="PP" value="''' + str(PP) + '''"/></th>'''
             if(int(ListOfColumns[i]) == 20):
@@ -937,37 +1007,39 @@ class HomePage(object):
                 String = String + '''<th  id="S23"><p><span class="s2" onClick="SortChangeValueB('23','False');"></span>  <span onClick="SelectCol('23');">Monitor Time </span> <span class="s3" onClick="SortChangeValueB('23','True');"></span></p><input type="text" onClick="" name="MT" value="''' + str(MT) + '''"/></th>'''
             if(int(ListOfColumns[i]) == 24):
                 String = String + '''<th  id="S24"><p><span class="s2" onClick="SortChangeValueB('24','False');"></span>  <span onClick="SelectCol('24');">Performance report</span> <span class="s3" onClick="SortChangeValueB('24','True');"></span></p><input type="text" onClick="" name="PF" value="''' + str(PF) + '''"/></th>'''
-            
+
             i = i + 1
+
         String = String + "</tr>"
-        From = (Page - 1) * ResultToPrint
-        To = Page * ResultToPrint
         for index, elem in enumerate(ListB):
-            String = String + elem.toString(index%2, ListOfColumns)
+            String = String + elem.toString(index % 2, ListOfColumns)
+
         return String
-    index.exposed = True 
-   
+
+    index.exposed = True
+
+
 class Initializer(object):
-    
+
     def Actualization(self, db_query):
-        possible_source = ['file','web','db']
         source = 'db'
         if source == 'web':
             response = urllib2.urlopen('http://vlimant.web.cern.ch/vlimant/Directory/summer12/stats/stats_json.txt')
             jsonContent = json.loads(response.read())
-        elif source =='file':
-            JSONFile = open('/build/Media/stats_json.txt', 'r') #default value
-            #JSONFile = open('stats_json.txt', 'r') # for local tests only
+        elif source == 'file':
+            JSONFile = open('/build/Media/stats_json.txt', 'r')  # default value
+            # JSONFile = open('stats_json.txt', 'r') # for local tests only
             jsonContent = json.loads(JSONFile.read())
         elif source == 'db':
-            ### NEW super cool stuff
-            ##go to view to get data with params!
-            print "##DB_QUERY: %s" %(db_query)
-            dbData = urllib2.urlopen('http://vocms084.cern.ch:5984/'+db_query)
+            # NEW super cool stuff
+            # go to view to get data with params!
+            print "##DB_QUERY: %s" % (db_query)
+            dbData = urllib2.urlopen('http://vocms084.cern.ch:5984/' + db_query)
             data = json.loads(dbData.read())
             n_results = data['total_rows']
-            print "Found %s result(-s)"%(data['total_rows'])
-            jsonContent = map(lambda c: c['doc'], filter(lambda r : not r['id'].startswith('_'), data['rows'])) ##needs update
+            print "Found %s result(-s)" % (data['total_rows'])
+            jsonContent = map(lambda c: c['doc'], filter(lambda r: not r['id'].startswith('_'), data['rows']))  # needs update
+
         i = 0
         while(i < len(jsonContent)):
             Sim = Simulation()
@@ -986,33 +1058,34 @@ class Initializer(object):
             Sim.Attributs["PDMV status in DAS"] = str(jsonContent[i]["pdmv_status_in_DAS"])
             Sim.Attributs["PDMV prep id"] = str(jsonContent[i]["pdmv_prep_id"])
             Sim.Attributs["PDMV campaign"] = str(jsonContent[i]["pdmv_campaign"])
-                
             DataSetName_Before_treatment = str(jsonContent[i]["pdmv_dataset_name"])
             if((DataSetName_Before_treatment == "None Yet")or(DataSetName_Before_treatment == "?")):
                 DataSetName_Before_treatment = ""
+
             Sim.Attributs["PDMV data set name"] = DataSetName_Before_treatment
             Sim.Attributs["PDMV status"] = str(jsonContent[i]["pdmv_status"])
             if "request_id" in jsonContent[i]["pdmv_request"]:
                 Sim.Attributs["PDMV request"] = str(jsonContent[i]["pdmv_request"]["request_id"])
+
             Sim.Attributs["PDMV present priority"] = int(jsonContent[i]["pdmv_present_priority"])
-                
             Completion_in_DAS_Before_Treatement = float(jsonContent[i]["pdmv_completion_in_DAS"])
             if(Completion_in_DAS_Before_Treatement <= 0):
                 Completion_in_DAS_Before_Treatement = +0.0
             elif(Completion_in_DAS_Before_Treatement > 100):
                 Completion_in_DAS_Before_Treatement = 100.0
+
             Sim.Attributs["PDMV completion in das"] = Completion_in_DAS_Before_Treatement
             Sim.Attributs["PDMV all jobs"] = int(jsonContent[i]["pdmv_all_jobs"])
             Sim.Attributs["PDMV pending jobs"] = int(jsonContent[i]["pdmv_pending_jobs"])
             Sim.Attributs["PDMV monitor time"] = str(jsonContent[i]["pdmv_monitor_time"])
-                
             if 'pdmv_performance' in jsonContent[i]:
-                adds_on=[]
-                for (step,value) in jsonContent[i]['pdmv_performance'].items():
-                    adds_on.append('%s: %.2f s/evt'%(step.split('/')[-1],value))
+                adds_on = []
+                for (step, value) in jsonContent[i]['pdmv_performance'].items():
+                    adds_on.append('%s: %.2f s/evt' % (step.split('/')[-1], value))
+
                 Sim.Attributs["PDMV Perf"] = ', '.join(adds_on)
 
-            ## put in at the end
+            # put in at the end
             ListOfSimulationsTemp.append(Sim)
             i = i + 1
         del(ListOfSimulations[:])
@@ -1020,9 +1093,10 @@ class Initializer(object):
         while(i < len(ListOfSimulationsTemp)):
             ListOfSimulations.append(ListOfSimulationsTemp[i])
             i = i + 1
+
         del(ListOfSimulationsTemp[:])
         return n_results
-      
+
     def getStr(self, string, key):
         i = string.find(key)
         loopIndicator = 0
@@ -1033,8 +1107,9 @@ class Initializer(object):
             loopIndicator = loopIndicator + 1
             if("'" in subString):
                 subString.remove("'")
+
         return str(''.join(subString))
-    
+
     def getInt(self, string, key):
         i = string.find(key)
         loopIndicator = 0
@@ -1045,36 +1120,40 @@ class Initializer(object):
             loopIndicator = loopIndicator + 1
             if("'" in subString):
                 subString.remove("'")
+
         return int(''.join(subString))
+
     def getFloat(self, string, key):
         position = string.find(key)
         loopIndicator = 0
         length = len(key)
-        PreCalcIndice = position + length 
+        PreCalcIndice = position + length
         subString = []
         while((string[loopIndicator + PreCalcIndice] != ",")and(string[loopIndicator + PreCalcIndice] != "}")):
             subString.append(string[loopIndicator + PreCalcIndice])
             loopIndicator = loopIndicator + 1
             if("'" in subString):
                 subString.remove("'")
+
         return float(''.join(subString))
 
-    Actualization.exposer = True 
+    Actualization.exposer = True
+
 
 DateHeartBeat = "Heart Attack"
 ListOfSimulationsTemp = list()
 ListOfSimulations = list()
-ListOfAttributs = ["SIMID",  #0
+ListOfAttributs = ["SIMID",  # 0
                    "PDMV expected events",
                    "PDMV type",
                    "PDMV status from reqmngr",
                    "PDMV priority",
                    "PDMV running jobs",
-                   "PDMV running days", #6
-                   "PDMV evts in DAS", #7
-                   "PDMV request name", #8
-                   "PDMV submission date", #9
-                   "PDMV completion eta in DAS", #10
+                   "PDMV running days",  # 6
+                   "PDMV evts in DAS",  # 7
+                   "PDMV request name",  # 8
+                   "PDMV submission date",  # 9
+                   "PDMV completion eta in DAS",  # 10
                    "PDMV status in DAS",
                    "PDMV prep id",
                    "PDMV campaign",
@@ -1084,7 +1163,7 @@ ListOfAttributs = ["SIMID",  #0
                    "PDMV pd pattern",
                    "PDMV present priority",
                    "PDMV completion in das",
-                   "PDMV all jobs",#20
-                   "PDMV pending jobs",#21
-                   "PDMV monitor time", #22
-                   "PDMV Perf"]  #23
+                   "PDMV all jobs",  # 20
+                   "PDMV pending jobs",  # 21
+                   "PDMV monitor time",  # 22
+                   "PDMV Perf"]  # 23
