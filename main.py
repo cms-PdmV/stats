@@ -40,7 +40,7 @@ output = proc.communicate()[0]
 try:
     json.loads(output)
 except:
-    print "couchdb-lucene is not runing! Please run:\n sudo nohup /bin/run &\n in couchdb-lucene directory"
+    print "couchdb-lucene is not runing! Please run:\n sudo nohup bin/run &\n in couchdb-lucene directory"
     sys.exit(1)
 
 root = HomePage()
