@@ -5,6 +5,9 @@ import urllib2
 import traceback
 from operator import itemgetter
 
+LUCENE_URL = "http://127.0.0.1:5985/"
+COUCHDB_URL = "http://127.0.0.1:5984/"
+
 
 class Simulation(object):
     # Global Value which contain all the parameter of the simulation
@@ -334,9 +337,9 @@ class HomePage(object):
         __page_offset = (Page - 1) * ResToPrint
 
         if len(ListSearch) != 0:
-            number_of_results = Initializer().Actualization('_fti/local/stats/_design/lucene/search?q=' + __query.finalize_query(ResToPrint, Page, SortValue, Order) + '&include_docs=true')
+            number_of_results = Initializer().Actualization(LUCENE_URL + 'local/stats/_design/lucene/search?q=' + __query.finalize_query(ResToPrint, Page, SortValue, Order) + '&include_docs=true')
         else:
-            number_of_results = Initializer().Actualization('stats/_all_docs?include_docs=true&skip=%s&limit=%s' % (__page_offset, ResToPrint))
+            number_of_results = Initializer().Actualization(COUCHDB_URL + 'stats/_all_docs?include_docs=true&skip=%s&limit=%s' % (__page_offset, ResToPrint))
         try:
             """
             if(len(ListOfS) > 0):
@@ -386,7 +389,7 @@ class HomePage(object):
             ListTemp = list(ListOfSimulations)  # list of data
             # Lets get statistical data for graphs!
             if len(ListSearch) != 0:
-                __url = 'http://vocms084.cern.ch:5984/' + '_fti/local/stats/_design/lucene/search?q=' + __query.graph_query(SortValue, Order) + '&limit=100000'
+                __url = LUCENE_URL + 'local/stats/_design/lucene/search?q=' + __query.graph_query(SortValue, Order) + '&limit=100'
                 print __url
                 dbData = urllib2.urlopen(__url)
                 __stats_data = [elem["fields"] for elem in json.loads(dbData.read())["rows"]]
@@ -402,7 +405,8 @@ class HomePage(object):
             # anyways, calculate the total number of events and expected from selected
         except:
             print "failing EventExpectedTot and EventATM"
-            print traceback.format_exc()
+            # print traceback.format_exc()
+            __stats_data = []
             pass
 
         # print "Counting:",EventATM,EventExpectedTot
@@ -1034,7 +1038,7 @@ class Initializer(object):
             # NEW super cool stuff
             # go to view to get data with params!
             print "##DB_QUERY: %s" % (db_query)
-            dbData = urllib2.urlopen('http://vocms084.cern.ch:5984/' + db_query)
+            dbData = urllib2.urlopen(db_query)
             data = json.loads(dbData.read())
             n_results = data['total_rows']
             print "Found %s result(-s)" % (data['total_rows'])
