@@ -265,7 +265,7 @@ def main():
                       choices=['update','insert','kill','list'],
                       )
     parser.add_option("--db",
-                      default="http://vocms084.cern.ch")
+                      default="http://localhost")
     ### Due to migration for ReqMgr2
     ##REMOVE BEFORE PUSH TO PROD
     # parser.add_option("--db",
