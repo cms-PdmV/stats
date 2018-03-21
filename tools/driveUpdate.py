@@ -16,6 +16,7 @@ from couchDB import Interface
 
 
 FORCE = False
+logger = None
 
 def insertAll(req_list,docs,pattern=None,limit=None):
     newentries=0
@@ -114,108 +115,122 @@ def worthTheUpdate(new,old):
     else:
         return False
 
+
 def compare_dictionaries(dict1, dict2):
-     if dict1 == None or dict2 == None:
-         return False
+    if dict1 is None or dict2 is None:
+        return False
 
-     if type(dict1) is not dict or type(dict2) is not dict:
-         return False
+    if type(dict1) is not dict or type(dict2) is not dict:
+        return False
 
-     shared_keys = set(dict2.keys()) & set(dict2.keys())
+    shared_keys = set(dict1.keys()) & set(dict2.keys())
+    if not (len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
+        return False
 
-     if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
-         return False
+    try:
+        dicts_are_equal = True
+        for key in dict1.keys():
+            if type(dict1[key]) is dict:
+                dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key], dict2[key])
+            else:
+                dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
 
-     try:
-         dicts_are_equal = True
-         for key in dict1.keys():
-             if type(dict1[key]) is dict:
-                 dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key],dict2[key])
-             else:
-                 dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
-         return dicts_are_equal
-     except:
-         return False
+            if not dicts_are_equal:
+                return False
+        return dicts_are_equal
+    except:
+        return False
+
 
 def updateOne(docid, match_req_list):
     if "dmason" in docid:
-        print "Its a dmason request: %s" % (docid)
+        logger.info("Its a dmason request: %s" % (docid))
         return False
-    #if "anorkus" not in docid:
-    #    print "Not anorkus request: %s" % (docid)
-    #    return False
+    # if "anorkus" not in docid:
+    #     print "Not anorkus request: %s" % (docid)
+    #     return False
     global statsCouch
     try:
-        thisDoc=statsCouch.get_file_info(docid)
-    except:
-        print "There was an access crash with",docid
+        thisDoc = statsCouch.get_file_info(docid)
+    except Exception as ex:
+        logger.error("There was an access crash with %s. Exception %s" % (docid, str(ex)))
         return False
 
-    updatedDoc=copy.deepcopy(thisDoc)
+    updatedDoc = copy.deepcopy(thisDoc)
     if not len(match_req_list):
-        ## when there is a fake requests in stats.
+        # when there is a fake requests in stats.
         if docid.startswith('fake_'):
-            match_req_list=[{"request_name":docid, "status":"announced","type":"ReDigi"}]
-            print "FAKE"
+            match_req_list = [{"request_name": docid, "status": "announced", "type": "ReDigi"}]
+            logger.warning("FAKE %s" % (docid))
         return False
-    if len(match_req_list)>1 :
-        print "more than one !!"
-    req=match_req_list[0]
+
+    if len(match_req_list) > 1:
+        logger.warning("More than one! %s" % (docid))
+
+    req = match_req_list[0]
     from statsMonitoring import parallel_test
     global FORCE
-    #print "##DEBUG## sending a request for parallel_test.\nreq:%s\nupdatedDoc:%s" % (req, updatedDoc)
-    updatedDoc=parallel_test( [req,[updatedDoc]] ,force=FORCE)
-    if updatedDoc=={}:
-        print "updating",docid,"returned an empty dict"
+    # print "##DEBUG## sending a request for parallel_test.\nreq:%s\nupdatedDoc:%s" % (req, updatedDoc)
+    updatedDoc = parallel_test([req, [updatedDoc]], force=FORCE)
+    if updatedDoc == {}:
+        logger.error("Updating %s returned an empty dict" % (docid))
         return False
-    if updatedDoc==None:
-        print "deleting",docid
+
+    if updatedDoc is None:
+        logger.info("Deleting %s" % (docid))
         pprint.pprint(thisDoc)
-        statsCouch.delete_file_info(docid,thisDoc['_rev'])
+        statsCouch.delete_file_info(docid, thisDoc['_rev'])
         return False
-    if worthTheUpdate(updatedDoc,thisDoc):
-        to_get=['pdmv_monitor_time','pdmv_evts_in_DAS','pdmv_open_evts_in_DAS','pdmv_dataset_statuses']
-        if 'pdvm_monitor_history' in updatedDoc:
-            updatedDoc['pdvm_monitor_history'] == updatedDoc.pop( 'pdvm_monitor_history' )
-        if not 'pdmv_monitor_history' in updatedDoc:
-            ## do the migration
+
+    if worthTheUpdate(updatedDoc, thisDoc):
+        to_get = ['pdmv_monitor_time',
+                  'pdmv_evts_in_DAS',
+                  'pdmv_open_evts_in_DAS',
+                  'pdmv_dataset_statuses']
+        if 'pdmv_monitor_history' not in updatedDoc:
+            # do the migration
             thisDoc_bis = statsCouch.get_file_info_withrev(docid)
             revs = thisDoc_bis['_revs_info']
-            history=[]
+            history = []
             for rev in revs:
                 try:
-                    nextOne=statsCouch.get_file_info_rev(docid, rev['rev'])
+                    nextOne = statsCouch.get_file_info_rev(docid, rev['rev'])
                 except:
                     continue
 
                 history.append({})
                 for g in to_get:
-                    if not g in nextOne: continue
+                    if g not in nextOne:
+                        continue
+
                     history[-1][g] = copy.deepcopy(nextOne[g])
 
             updatedDoc['pdmv_monitor_history'] = history
+
         if 'pdmv_monitor_history' in updatedDoc:
             rev = {}
             for g in to_get:
-                if not g in updatedDoc: continue
+                if g not in updatedDoc:
+                    continue
+
                 rev[g] = copy.deepcopy(updatedDoc[g])
+
             old_history = copy.deepcopy(updatedDoc['pdmv_monitor_history'][0])
             new_history = copy.deepcopy(rev)
-            del old_history["pdmv_monitor_time"] ##compare history without monitor time
+            del old_history["pdmv_monitor_time"]  # compare history without monitor time
             del new_history["pdmv_monitor_time"]
-            if not compare_dictionaries(old_history, new_history): # it is worth to fill history
+            if not compare_dictionaries(old_history, new_history):  # it is worth to fill history
                 updatedDoc['pdmv_monitor_history'].insert(0, rev)
 
         try:
-            statsCouch.update_file(docid,json.dumps(updatedDoc))
-            print docid,"something has changed"
+            statsCouch.update_file(docid, json.dumps(updatedDoc))
+            logger.info("Something has changed %s" % (docid))
             return docid
-        except:
-            print "Failed to update",docid
-            print traceback.format_exc()
+        except Exception as ex:
+            logger.error("Failed to update %s. Exception %s" % (docid, str(ex)))
             return False
     else:
-        print docid,"nothing changed"
+        logger.info("%s not worth the update (nothing changed)" % (docid))
         return False
 
 
@@ -288,7 +303,6 @@ def main():
 
 
 def main_do(options):
-    logger = logging.getLogger()
     logger.info("Running main")
     if options.check:
         logger.info('Check')
@@ -510,6 +524,8 @@ if __name__ == "__main__":
     PROFILE = False
     FORMAT = '[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s'
     logging.basicConfig(stream=sys.stdout, format=FORMAT, level=logging.INFO)
+    global logger
+    logger = logging.getLogger()
     if PROFILE:
         import cProfile
         cProfile.run('main()')
