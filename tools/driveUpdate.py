@@ -218,13 +218,12 @@ def updateOne(docid, match_req_list):
         print docid,"nothing changed"
         return False
 
-def updateOneIt(arguments):
-    docid,request_dict = arguments
-    if docid in request_dict:
-        request_list = request_dict[docid]
-    else:
-        request_list = []
-    return updateOne(docid,request_list)
+
+def updateOneIt(key_value_pair):
+    docid = key_value_pair[0]
+    request_dict = key_value_pair[1]
+    return updateOne(docid, request_dict)
+
 
 def dumpSome(docids,limit):
     dump=[]
@@ -326,7 +325,7 @@ def main_do(options):
 
     logger.info("... done")
 
-    nproc = 5
+    nproc = multiprocessing.cpu_count() - 1 or 1
     limit = None
     if options.test:
         limit = 10
@@ -442,19 +441,19 @@ def main_do(options):
                     pprint.pprint(req_list)
 
         if limit:
-            docs = docs[0:limit]
+            req_list = req_list[0:limit]
 
         request_dict = {}
         for request in req_list:
             if request['request_name'] in request_dict:
                 request_dict[request['request_name']].append(request)
+                logger.info('APPEND! %s' % (request['request_name']))
             else:
                 request_dict[request['request_name']] = [request]
-        repeated_request_dict = itertools.repeat(request_dict, len(docs))
 
         logger.info("Dispaching %d requests to %d processes..." % (len(docs), nproc))
         pool = multiprocessing.Pool(nproc)
-        results = pool.map(updateOneIt, itertools.izip(docs, repeated_request_dict))
+        results = pool.map(updateOneIt, request_dict.iteritems())
 
         logger.info("End dispatching")
 
