@@ -10,6 +10,7 @@ import time
 import traceback
 import os
 import sys
+import logging
 
 from couchDB import Interface
 from statsMonitoring import datelist_to_str
@@ -288,7 +289,8 @@ def main():
     return main_do( options )
 
 def main_do( options ):
-    print "##DEBUG## main"
+    logger = logging.getLogger()
+    logger.info("Running main")
     if options.check:
         #we check if this script is already running with same parameters#
         checks=['ps -f -u $USER']
@@ -316,13 +318,13 @@ def main_do( options ):
     if options.force:
         view = 'all'
 
-    print "Getting all stats ..."
+    logger.info("Getting all stats ...")
     allDocs = statsCouch.get_view(view)
     docs = [doc['id'] for doc in allDocs['rows']]
     #remove the _design/stats
     if view == 'all':
         docs = filter(lambda doc : not doc.startswith('_'), docs)
-    print "... done"
+    logger.info("... done")
 
     nproc = 5
     limit = None
@@ -330,50 +332,53 @@ def main_do( options ):
         limit = 10
 
     if options.do == 'insert':
+        logger.info('do = Insert')
         ## get from wm couch
         from statsMonitoring import parallel_test,get_requests_list
-        print "Getting all req ..."
+        logger.info("Getting all req ...")
         req_list = get_requests_list()
-        print "... done"
+        logger.info("... done")
 
         ## insert new requests, not already in stats couch into stats couch
         #insertAll(req_list,docs,options.search,limit)
 
+        logger.info('Will filter')
         if options.search:
             req_list = filter( lambda req : options.search in req["request_name"], req_list )
             #print len(req_list)
 
+        logger.info('Requests %d' % (len(req_list)))
         #print "req_list: " % (req_list)
         #skip malformated ones
         req_list = filter( lambda req : "status" in req, req_list )
-        print len(req_list)
+        logger.info('Requests %d' % (len(req_list)))
 
         #take only the ones not already in there
         req_list = filter( lambda req : req["request_name"] not in docs, req_list )
-        print len(req_list)
+        logger.info('Requests %d' % (len(req_list)))
 
         #skip trying to insert aborted and rejected or failed
         #req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed','aborted-archived','rejected-archived','failed-archived'], req_list )
         req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed', None], req_list )
-        print len(req_list)
+        logger.info('Requests %d' % (len(req_list)))
 
         #do not update TaskChain request statuses
         #req_list = filter( lambda req : 'type' in req and req['type']!='TaskChain', req_list)
-        print len(req_list)
+        logger.info('Requests %d' % (len(req_list)))
 
         if limit:
             req_list = req_list[0:limit]
             #print len(req_list)
 
         newentries = 0
-        print "Dispaching", len(req_list), "requests to", str(nproc), "processes..."
+        logger.info('Dispatching %d requests to %d processes' % (len(req_list), nproc))
         pool = multiprocessing.Pool(nproc)
         results = pool.map(insertOne, req_list)
-        print "End dispatching!"
+        logger.info('End dispatching')
 
         results = filter(lambda item : item != False, results)
-        print len(results), "inserted"
-        print str(results)
+        logger.info('%d inserted' % (len(results)))
+        logger.info(str(results))
         """
         showme=''
         for r in results:
@@ -404,14 +409,15 @@ def main_do( options ):
                         print "nothing to kill"
 
     elif options.do == 'update':
+        logger.info('do = Update')
         __newest = True
         if options.search:
             __newest = False
         ## get from wm couch
         from statsMonitoring import parallel_test,get_requests_list
-        print "Getting all req ..."
+        logger.info("Getting all req ...")
         req_list = get_requests_list(not_in_wmstats=options.nowmstats, newest=__newest)
-        print "... done"
+        logger.info("... done")
 
         if options.mcm:
             sys.path.append('/afs/cern.ch/cms/PPD/PdmV/tools/McM/')
@@ -447,11 +453,11 @@ def main_do( options ):
                 request_dict[request['request_name']] = [request]
         repeated_request_dict = itertools.repeat(request_dict, len(docs))
 
-        print "Dispaching", len(docs), "requests to ", str(nproc), "processes..."
+        logger.info("Dispaching %d requests to %d processes..." % (len(docs), nproc))
         pool = multiprocessing.Pool(nproc)
         results = pool.map(updateOneIt, itertools.izip(docs, repeated_request_dict))
 
-        print "End dispatching!"
+        logger.info("End dispatching")
 
         if options.search:
             dump = dumpSome(docs, limit)
@@ -459,8 +465,8 @@ def main_do( options ):
             pprint.pprint(dump)
 
         results = filter( lambda item : item != False, results)
-        print len(results), "updated"
-        print results
+        logger.info('%d updated' % (len(results)))
+        logger.info(str(results))
 
         print "\n\n"
         for r in results:
@@ -506,6 +512,8 @@ def main_do( options ):
 
 if __name__ == "__main__":
     PROFILE=False
+    FORMAT = '[%(asctime)s][%(filename)s->%(funcName)s:%(lineno)d][%(levelname)s] %(message)s'
+    logging.basicConfig(stream=sys.stdout, format=FORMAT, level=logging.INFO)
     if PROFILE:
         import cProfile
         cProfile.run('main()')
