@@ -339,7 +339,7 @@ def main_do(options):
 
     logger.info("... done")
 
-    nproc = multiprocessing.cpu_count() - 1 or 1
+    nproc = 4
     limit = None
     if options.test:
         limit = 10
@@ -431,10 +431,11 @@ def main_do(options):
         req_list = get_requests_list(not_in_wmstats=options.nowmstats, newest=__newest)
         logger.info("... done")
 
+        cookie_path = '/home/pdmvserv/private/prod_cookie.txt'
         if options.mcm:
             sys.path.append('/afs/cern.ch/cms/PPD/PdmV/tools/McM/')
             from rest import restful
-            mcm = restful(dev=False, cookie='/afs/cern.ch/user/p/pdmvserv/private/prod-cookie.txt')
+            mcm = restful(dev=False, cookie=cookie_path)
             rs = mcm.getA('requests', query='status=submitted')
             rids = map(lambda d: d['prepid'], rs)
 
@@ -491,7 +492,7 @@ def main_do(options):
                 # notify McM for update !!
                 if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
                     logger.info("Notifying McM for update")
-                    inspect = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
+                    inspect = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % (cookie_path, withRevisions['pdmv_prep_id'])
                     # TO-DO change for reqgmr2 migration
                     # inspect = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
                     os.system(inspect)
@@ -501,7 +502,7 @@ def main_do(options):
                     withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None', '_'] and
                     withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
                     ## we should trigger this only if events_in_das was updated for done
-                    update_comm = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
+                    update_comm = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % (cookie_path, withRevisions['pdmv_prep_id'])
                     #update_comm = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
                     logger.info("Triggering McM completed_evts syncing for a done request %s" % (withRevisions['pdmv_prep_id']))
 
