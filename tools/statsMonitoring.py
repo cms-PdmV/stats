@@ -312,12 +312,22 @@ def get_expected_events_withinput(rne, ids, bwl, rwl, filter_eff):
                 if blocks:
                     for run in rwl:
                         print "checking run: %s" % (run)
-                        ret = generic_get(dbs3_url + "filesummaries?dataset=%s&run_num=%s" % (d, run)) #returns blocks names
+                        ret = generic_get(dbs3_url + "filesummaries?dataset=%s&run_num=%s&sumOverLumi=1" % (d, run)) #returns blocks names
                         data = ret
                         try:
                             s += int(data[0]["num_event"])
                         except:
                             print d, "does not have event for", run
+                    if s == 0:
+                        #this means the new API failed and we should sum over again with old API
+                        for run in rwl:
+                            ret = generic_get(dbs3_url + "filesummaries?dataset=%s&run_num=%s" % (d, run)) #returns blocks names
+                            data = ret
+                            try:
+                                s += int(data[0]["num_event"])
+                            except:
+                                print d, "does not have event for", run
+
             else:
                 print "Doing block selection"
                 ret = generic_get(dbs3_url+"blocks?dataset=%s" %(d)) #returns blocks names ????
