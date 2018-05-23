@@ -38,7 +38,7 @@ def insertAll(req_list,docs,pattern=None,limit=None):
             newentries+=1
     print newentries,"inserted"
 
-countOld=0
+
 def insertOne(req):
     ##req is from wmstats
     global statsCouch
@@ -54,62 +54,31 @@ def insertOne(req):
     #pprint.pprint(updatedDoc)
     return docid
 
-def worthTheUpdate(new,old):
-    ##make a tighter selection on when to update in couchDB to not overblow it with 2 update per hour ...
+
+def worthTheUpdate(new, old):
+    # make a tighter selection on when to update in couchDB to not overblow it with multiple updates per 4 hours
     global FORCE
-    global countOld
     if FORCE:
         return True
 
-    if old['pdmv_evts_in_DAS']!=new['pdmv_evts_in_DAS']:
+    if old['pdmv_evts_in_DAS'] != new['pdmv_evts_in_DAS']:
         return True
-    if old['pdmv_status_in_DAS']!=new['pdmv_status_in_DAS']:
+    if old['pdmv_status_in_DAS'] != new['pdmv_status_in_DAS']:
         return True
-    if old['pdmv_status_from_reqmngr']!=new['pdmv_status_from_reqmngr']:
-        return True
-
-    if set(old['pdmv_at_T2'])!=set(new['pdmv_at_T2']):
+    if old['pdmv_status_from_reqmngr'] != new['pdmv_status_from_reqmngr']:
         return True
 
-    if old!=new:
-        ## what about monitor time ???? that is different ?
-        if set(old.keys())!=set(new.keys()):
-            ## addign a new parameter
-            return True
-        if 'pdmv_performance' in new and new['pdmv_performance']!={}:
-            if not 'pdmv_performance' in old:
-                return True
-            else:
-                if new['pdmv_performance']!= old['pdmv_performance']:
-                    return True
-
-        #samples location has updated
-        if ('pdmv_at_T2' in old and 'pdmv_at_T2' in new) and (set(old['pdmv_at_T2']) != set(new['pdmv_at_T2']) ):
+    if old != new:
+        # what about monitor time ???? that is different ?
+        if set(old.keys()) != set(new.keys()):
+            # addign a new parameter
             return True
 
-        n_more=(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])-(old['pdmv_evts_in_DAS']+old['pdmv_open_evts_in_DAS'])
-        n_tot=float(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])
-        f_more=-1
-        if n_tot:
-            f_more=n_more / n_tot
-        #more than x% more stat
-        if f_more > 0.04:
-            return True
-        #change of status
-        if old['pdmv_status_from_reqmngr']!=new['pdmv_status_from_reqmngr']:
-            return True
-        if old['pdmv_running_days']!=new['pdmv_running_days']:
+        if old['pdmv_dataset_statuses'] != new['pdmv_dataset_statuses']:
             return True
 
-        uptime=time.mktime(time.strptime(new['pdmv_monitor_time']))
-        oldtime=time.mktime(time.strptime(old['pdmv_monitor_time']))
-        deltaUpdate = (uptime-oldtime) / (60. * 60. * 24.)
-        ### more than 10 days old => update
-        if deltaUpdate>10 and countOld<=30:
-            countOld+=1
-            return True
-        ##otherwise do not update, even with minor changes
-        print "minor changes to",new['pdmv_request_name'],n_more,"more events for",f_more
+        # otherwise do not update, even with minor changes
+        print "minor changes to", new['pdmv_request_name'], new['pdmv_evts_in_DAS'], "is more than", old['pdmv_evts_in_DAS']
         print old['pdmv_status_from_reqmngr'], new['pdmv_status_from_reqmngr']
         return False
     else:
@@ -443,15 +412,17 @@ def main_do(options):
             # print len(docs),len(req_list)
             # print map( lambda docid : any( map(lambda rid : rid in doc, rids)), docs)
             docs = filter(lambda docid: any(map(lambda rid: rid in docid, rids)), docs)
-            if not len(docs):
-                req_list = filter(lambda req: any(map(lambda rid: rid in req["request_name"], rids)), req_list)
+            if len(docs):
+                # req_list = filter(lambda req: any(map(lambda rid: rid in req["request_name"], rids)), req_list)
+                req_list = filter(lambda req: req['request_name'] in docs, req_list)
 
         if options.search:
             if options.force:
                 FORCE = True
             docs = filter(lambda docid: options.search in docid, docs)
-            if not len(docs):
-                req_list = filter(lambda req: options.search in req["request_name"], req_list)
+            if len(docs):
+                # req_list = filter(lambda req: options.search in req["request_name"], req_list)
+                req_list = filter(lambda req: req['request_name'] in docs, req_list)
                 if len(req_list):
                     pprint.pprint(req_list)
 
@@ -466,7 +437,7 @@ def main_do(options):
             else:
                 request_dict[request['request_name']] = [request]
 
-        logger.info("Dispaching %d requests to %d processes..." % (len(docs), nproc))
+        logger.info("Dispaching %d requests to %d processes..." % (len(request_dict), nproc))
         pool = multiprocessing.Pool(nproc)
         results = pool.map(updateOneIt, request_dict.iteritems())
 
