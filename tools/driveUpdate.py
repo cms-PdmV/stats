@@ -10,12 +10,13 @@ import time
 import traceback
 import os
 import sys
+import logging
 
 from couchDB import Interface
-from statsMonitoring import datelist_to_str
-from datetime import date
 
-FORCE=False
+
+FORCE = False
+logger = None
 
 def insertAll(req_list,docs,pattern=None,limit=None):
     newentries=0
@@ -37,7 +38,7 @@ def insertAll(req_list,docs,pattern=None,limit=None):
             newentries+=1
     print newentries,"inserted"
 
-countOld=0
+
 def insertOne(req):
     ##req is from wmstats
     global statsCouch
@@ -53,178 +54,160 @@ def insertOne(req):
     #pprint.pprint(updatedDoc)
     return docid
 
-def worthTheUpdate(new,old):
-    ##make a tighter selection on when to update in couchDB to not overblow it with 2 update per hour ...
+
+def worthTheUpdate(new, old):
+    # make a tighter selection on when to update in couchDB to not overblow it with multiple updates per 4 hours
     global FORCE
-    global countOld
     if FORCE:
         return True
 
-    if old['pdmv_evts_in_DAS']!=new['pdmv_evts_in_DAS']:
+    if old['pdmv_evts_in_DAS'] != new['pdmv_evts_in_DAS']:
         return True
-    if old['pdmv_status_in_DAS']!=new['pdmv_status_in_DAS']:
+    if old['pdmv_status_in_DAS'] != new['pdmv_status_in_DAS']:
         return True
-    if old['pdmv_status_from_reqmngr']!=new['pdmv_status_from_reqmngr']:
-        return True
-
-    if set(old['pdmv_at_T2'])!=set(new['pdmv_at_T2']):
+    if old['pdmv_status_from_reqmngr'] != new['pdmv_status_from_reqmngr']:
         return True
 
-    if old!=new:
-        ## what about monitor time ???? that is different ?
-        if set(old.keys())!=set(new.keys()):
-            ## addign a new parameter
-            return True
-        if 'pdmv_performance' in new and new['pdmv_performance']!={}:
-            if not 'pdmv_performance' in old:
-                return True
-            else:
-                if new['pdmv_performance']!= old['pdmv_performance']:
-                    return True
-
-        #samples location has updated
-        if ('pdmv_at_T2' in old and 'pdmv_at_T2' in new) and (set(old['pdmv_at_T2']) != set(new['pdmv_at_T2']) ):
+    if old != new:
+        # what about monitor time ???? that is different ?
+        if set(old.keys()) != set(new.keys()):
+            # addign a new parameter
             return True
 
-        n_more=(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])-(old['pdmv_evts_in_DAS']+old['pdmv_open_evts_in_DAS'])
-        n_tot=float(new['pdmv_evts_in_DAS']+new['pdmv_open_evts_in_DAS'])
-        f_more=-1
-        if n_tot:
-            f_more=n_more / n_tot
-        #more than x% more stat
-        if f_more > 0.04:
-            return True
-        #change of status
-        if old['pdmv_status_from_reqmngr']!=new['pdmv_status_from_reqmngr']:
-            return True
-        if old['pdmv_running_days']!=new['pdmv_running_days']:
+        if old['pdmv_dataset_statuses'] != new['pdmv_dataset_statuses']:
             return True
 
-        uptime=time.mktime(time.strptime(new['pdmv_monitor_time']))
-        oldtime=time.mktime(time.strptime(old['pdmv_monitor_time']))
-        deltaUpdate = (uptime-oldtime) / (60. * 60. * 24.)
-        ### more than 10 days old => update
-        if deltaUpdate>10 and countOld<=30:
-            countOld+=1
-            return True
-        ##otherwise do not update, even with minor changes
-        print "minor changes to",new['pdmv_request_name'],n_more,"more events for",f_more
+        # otherwise do not update, even with minor changes
+        print "minor changes to", new['pdmv_request_name'], new['pdmv_evts_in_DAS'], "is more than", old['pdmv_evts_in_DAS']
         print old['pdmv_status_from_reqmngr'], new['pdmv_status_from_reqmngr']
         return False
     else:
         return False
 
+
 def compare_dictionaries(dict1, dict2):
-     if dict1 == None or dict2 == None:
-         return False
+    if dict1 is None or dict2 is None:
+        return False
 
-     if type(dict1) is not dict or type(dict2) is not dict:
-         return False
+    if type(dict1) is not dict or type(dict2) is not dict:
+        return False
 
-     shared_keys = set(dict2.keys()) & set(dict2.keys())
+    shared_keys = set(dict1.keys()) & set(dict2.keys())
+    if not (len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
+        return False
 
-     if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
-         return False
+    try:
+        dicts_are_equal = True
+        for key in dict1.keys():
+            if type(dict1[key]) is dict:
+                dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key], dict2[key])
+            else:
+                dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
 
-     try:
-         dicts_are_equal = True
-         for key in dict1.keys():
-             if type(dict1[key]) is dict:
-                 dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key],dict2[key])
-             else:
-                 dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
-         return dicts_are_equal
-     except:
-         return False
+            if not dicts_are_equal:
+                return False
+        return dicts_are_equal
+    except:
+        return False
+
 
 def updateOne(docid, match_req_list):
     if "dmason" in docid:
-        print "Its a dmason request: %s" % (docid)
+        logger.info("Its a dmason request: %s" % (docid))
         return False
-    #if "anorkus" not in docid:
-    #    print "Not anorkus request: %s" % (docid)
-    #    return False
+    # if "anorkus" not in docid:
+    #     print "Not anorkus request: %s" % (docid)
+    #     return False
     global statsCouch
     try:
-        thisDoc=statsCouch.get_file_info(docid)
-    except:
-        print "There was an access crash with",docid
+        thisDoc = statsCouch.get_file_info(docid)
+    except Exception as ex:
+        logger.error("There was an access crash with %s. Exception %s" % (docid, str(ex)))
         return False
 
-    updatedDoc=copy.deepcopy(thisDoc)
+    updatedDoc = copy.deepcopy(thisDoc)
     if not len(match_req_list):
-        ## when there is a fake requests in stats.
+        # when there is a fake requests in stats.
         if docid.startswith('fake_'):
-            match_req_list=[{"request_name":docid, "status":"announced","type":"ReDigi"}]
-            print "FAKE"
+            match_req_list = [{"request_name": docid, "status": "announced", "type": "ReDigi"}]
+            logger.warning("FAKE %s" % (docid))
         return False
-    if len(match_req_list)>1 :
-        print "more than one !!"
-    req=match_req_list[0]
+
+    if len(match_req_list) > 1:
+        logger.warning("More than one! %s" % (docid))
+
+    req = match_req_list[0]
     from statsMonitoring import parallel_test
     global FORCE
-    #print "##DEBUG## sending a request for parallel_test.\nreq:%s\nupdatedDoc:%s" % (req, updatedDoc)
-    updatedDoc=parallel_test( [req,[updatedDoc]] ,force=FORCE)
-    if updatedDoc=={}:
-        print "updating",docid,"returned an empty dict"
+    # print "##DEBUG## sending a request for parallel_test.\nreq:%s\nupdatedDoc:%s" % (req, updatedDoc)
+    updatedDoc = parallel_test([req, [updatedDoc]], force=FORCE)
+    if updatedDoc == {}:
+        logger.error("Updating %s returned an empty dict" % (docid))
         return False
-    if updatedDoc==None:
-        print "deleting",docid
+
+    if updatedDoc is None:
+        logger.info("Deleting %s" % (docid))
         pprint.pprint(thisDoc)
-        statsCouch.delete_file_info(docid,thisDoc['_rev'])
+        statsCouch.delete_file_info(docid, thisDoc['_rev'])
         return False
-    if worthTheUpdate(updatedDoc,thisDoc):
-        to_get=['pdmv_monitor_time','pdmv_evts_in_DAS','pdmv_open_evts_in_DAS','pdmv_dataset_statuses']
-        if 'pdvm_monitor_history' in updatedDoc:
-            updatedDoc['pdvm_monitor_history'] == updatedDoc.pop( 'pdvm_monitor_history' )
-        if not 'pdmv_monitor_history' in updatedDoc:
-            ## do the migration
+
+    if worthTheUpdate(updatedDoc, thisDoc):
+        to_get = ['pdmv_monitor_time',
+                  'pdmv_evts_in_DAS',
+                  'pdmv_open_evts_in_DAS',
+                  'pdmv_dataset_statuses']
+        if 'pdmv_monitor_history' not in updatedDoc:
+            # do the migration
             thisDoc_bis = statsCouch.get_file_info_withrev(docid)
             revs = thisDoc_bis['_revs_info']
-            history=[]
+            history = []
             for rev in revs:
                 try:
-                    nextOne=statsCouch.get_file_info_rev(docid, rev['rev'])
+                    nextOne = statsCouch.get_file_info_rev(docid, rev['rev'])
                 except:
                     continue
 
                 history.append({})
                 for g in to_get:
-                    if not g in nextOne: continue
+                    if g not in nextOne:
+                        continue
+
                     history[-1][g] = copy.deepcopy(nextOne[g])
 
             updatedDoc['pdmv_monitor_history'] = history
+
         if 'pdmv_monitor_history' in updatedDoc:
             rev = {}
             for g in to_get:
-                if not g in updatedDoc: continue
+                if g not in updatedDoc:
+                    continue
+
                 rev[g] = copy.deepcopy(updatedDoc[g])
+
             old_history = copy.deepcopy(updatedDoc['pdmv_monitor_history'][0])
             new_history = copy.deepcopy(rev)
-            del old_history["pdmv_monitor_time"] ##compare history without monitor time
+            del old_history["pdmv_monitor_time"]  # compare history without monitor time
             del new_history["pdmv_monitor_time"]
-            if not compare_dictionaries(old_history, new_history): # it is worth to fill history
+            if not compare_dictionaries(old_history, new_history):  # it is worth to fill history
                 updatedDoc['pdmv_monitor_history'].insert(0, rev)
 
         try:
-            statsCouch.update_file(docid,json.dumps(updatedDoc))
-            print docid,"something has changed"
+            statsCouch.update_file(docid, json.dumps(updatedDoc))
+            logger.info("Something has changed %s" % (docid))
             return docid
-        except:
-            print "Failed to update",docid
-            print traceback.format_exc()
+        except Exception as ex:
+            logger.error("Failed to update %s. Exception %s" % (docid, str(ex)))
             return False
     else:
-        print docid,"nothing changed"
+        logger.info("%s not worth the update (nothing changed)" % (docid))
         return False
 
-def updateOneIt(arguments):
-    docid,request_dict = arguments
-    if docid in request_dict:
-        request_list = request_dict[docid]
-    else:
-        request_list = []
-    return updateOne(docid,request_list)
+
+def updateOneIt(key_value_pair):
+    docid = key_value_pair[0]
+    request_dict = key_value_pair[1]
+    return updateOne(docid, request_dict)
+
 
 def dumpSome(docids,limit):
     dump=[]
@@ -265,7 +248,7 @@ def main():
                       choices=['update','insert','kill','list'],
                       )
     parser.add_option("--db",
-                      default="http://vocms074.cern.ch")
+                      default="http://localhost")
     ### Due to migration for ReqMgr2
     ##REMOVE BEFORE PUSH TO PROD
     # parser.add_option("--db",
@@ -287,225 +270,234 @@ def main():
 
     return main_do( options )
 
-def main_do( options ):
-    print "##DEBUG## main"
+
+def main_do(options):
+    logger.info("Running main")
     if options.check:
-        #we check if this script is already running with same parameters#
-        checks=['ps -f -u $USER']
+        logger.info('Check')
+        # we check if this script is already running with same parameters#
+        checks = ['ps -f -u $USER']
         for arg in sys.argv[1:]:
-            checks.append('grep "%s"'%(arg.split('/')[-1].replace('--','')))
+            checks.append('grep "%s"' % (arg.split('/')[-1].replace('--', '')))
         checks.append('grep -v grep')
-        c = " | ".join(checks)
-        check=filter(None,os.popen("|".join(checks)).read().split('\n'))
-        if len(check)!=1:
-            print "already running with that exact setting"
-            print check
+        check = filter(None, os.popen("|".join(checks)).read().split('\n'))
+        if len(check) != 1:
+            logger.error("Already running with that exact setting")
+            logger.info(check)
             sys.exit(1)
         else:
-            print "ok to operate"
+            logger.info("ok to operate")
 
     start_time = time.asctime()
     global statsCouch, docs, FORCE
-    #interface to the couchDB
-    statsCouch = Interface(options.db+':5984/stats')
+    # interface to the couchDB
+    statsCouch = Interface(options.db + ':5984/stats')
 
-
-    ## get from stats couch the list of requests
+    # get from stats couch the list of requests
     view = 'yearAgo' if options.do == 'update' else 'all'
-    ##in case we want to force update even older workflows
+    # in case we want to force update even older workflows
     if options.force:
         view = 'all'
 
-    print "Getting all stats ..."
+    logger.info("Getting all stats ...")
     allDocs = statsCouch.get_view(view)
-    docs = [doc['id'] for doc in allDocs['rows']]
-    #remove the _design/stats
+    docs = set([doc['id'] for doc in allDocs['rows']])
+    # remove the _design/stats
     if view == 'all':
-        docs = filter(lambda doc : not doc.startswith('_'), docs)
-    print "... done"
+        docs = set(filter(lambda doc: not doc.startswith('_'), docs))
 
-    nproc = 5
+    logger.info("... done")
+
+    nproc = 4
     limit = None
     if options.test:
         limit = 10
 
     if options.do == 'insert':
-        ## get from wm couch
-        from statsMonitoring import parallel_test,get_requests_list
-        print "Getting all req ..."
+        logger.info('do = insert')
+        # get from wm couch
+        from statsMonitoring import parallel_test, get_requests_list
+        logger.info("Getting all req ...")
         req_list = get_requests_list()
-        print "... done"
+        logger.info("... done")
 
-        ## insert new requests, not already in stats couch into stats couch
-        #insertAll(req_list,docs,options.search,limit)
+        # insert new requests, not already in stats couch into stats couch
+        # insertAll(req_list,docs,options.search,limit)
 
+        logger.info('Will filter')
         if options.search:
-            req_list = filter( lambda req : options.search in req["request_name"], req_list )
-            #print len(req_list)
+            req_list = filter(lambda req: options.search in req["request_name"], req_list)
+            logger.info('%d requests after search' % (len(req_list)))
 
-        #print "req_list: " % (req_list)
-        #skip malformated ones
-        req_list = filter( lambda req : "status" in req, req_list )
-        print len(req_list)
+        # print "req_list: " % (req_list)
+        # skip malformated ones
+        req_list = filter(lambda req: "status" in req, req_list)
+        logger.info('%d requests after skipping malformed' % (len(req_list)))
 
-        #take only the ones not already in there
-        req_list = filter( lambda req : req["request_name"] not in docs, req_list )
-        print len(req_list)
+        # take only the ones not already in there
+        req_list = filter(lambda req: req["request_name"] not in docs, req_list)
+        logger.info('%d after taking only those not already in there' % (len(req_list)))
 
-        #skip trying to insert aborted and rejected or failed
-        #req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed','aborted-archived','rejected-archived','failed-archived'], req_list )
-        req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed', None], req_list )
-        print len(req_list)
+        # skip trying to insert aborted and rejected or failed
+        # req_list = filter( lambda req : not req["status"] in ['aborted','rejected','failed','aborted-archived','rejected-archived','failed-archived'], req_list )
+        req_list = filter(lambda req: not req["status"] in ['aborted', 'rejected', 'failed', None], req_list)
+        logger.info('%d after skipping aborted, rejected, failed and None' % (len(req_list)))
 
-        #do not update TaskChain request statuses
-        #req_list = filter( lambda req : 'type' in req and req['type']!='TaskChain', req_list)
-        print len(req_list)
+        # do not update TaskChain request statuses
+        # req_list = filter( lambda req : 'type' in req and req['type']!='TaskChain', req_list)
+        # logger.info('Requests %d' % (len(req_list)))
 
         if limit:
             req_list = req_list[0:limit]
-            #print len(req_list)
+            logger.info('%d after limiting' % (len(req_list)))
 
-        newentries = 0
-        print "Dispaching", len(req_list), "requests to", str(nproc), "processes..."
+        logger.info('Dispatching %d requests to %d processes' % (len(req_list), nproc))
         pool = multiprocessing.Pool(nproc)
         results = pool.map(insertOne, req_list)
-        print "End dispatching!"
+        logger.info('End dispatching')
 
-        results = filter(lambda item : item != False, results)
-        print len(results), "inserted"
-        print str(results)
+        results = filter(lambda item: item is not False, results)
+        logger.info('%d inserted' % (len(results)))
+        logger.info(str(results))
         """
         showme=''
         for r in results:
             showme+='\t'+r+'\n'
         print showme
         """
-    elif options.do =='kill' or options.do =='list' :
-        ## get from wm couch
-        from statsMonitoring import parallel_test,get_requests_list
-        print "Getting all req ..."
+    elif options.do == 'kill' or options.do == 'list':
+        logger.info('do = kill OR do = list')
+        # get from wm couch
+        from statsMonitoring import parallel_test, get_requests_list
+        logger.info("Getting all req ...")
         req_list = get_requests_list()
-        print "... done"
+        logger.info("... done")
 
         removed = []
         if options.search:
-            req_list = filter(lambda req : options.search in req["request_name"], req_list)
+            req_list = filter(lambda req: options.search in req["request_name"], req_list)
             for r in req_list:
-                print "Found", r['request_name'], "in status", (r['status'] if 'status' in r else 'undef'), "?"
+                logger.info("Found %s in status %s?" % (r['request_name'], (r['status'] if 'status' in r else 'undef')))
                 if options.do == 'kill':
-                    #print "killing",r['request_name'],"in status",(r['status'] if 'status' in r else 'undef'),"?"
+                    # print "killing",r['request_name'],"in status",(r['status'] if 'status' in r else 'undef'),"?"
                     docid = r['request_name']
-                    if docid in docs and not docid in removed:
+                    if docid in docs and docid not in removed:
                         thisDoc = statsCouch.get_file_info(docid)
-                        print "removing record for docid"
+                        logger.info("Removing record for docid %s" % (docid))
                         statsCouch.delete_file_info(docid, thisDoc['_rev'])
                         removed.append(docid)
                     else:
-                        print "nothing to kill"
+                        logger.info("Nothing to kill")
 
     elif options.do == 'update':
+        logger.info('do = update')
         __newest = True
         if options.search:
             __newest = False
-        ## get from wm couch
-        from statsMonitoring import parallel_test,get_requests_list
-        print "Getting all req ..."
+        # get from wm couch
+        from statsMonitoring import get_requests_list
+        logger.info("Getting all req ...")
         req_list = get_requests_list(not_in_wmstats=options.nowmstats, newest=__newest)
-        print "... done"
+        logger.info("... done")
 
+        cookie_path = '/home/pdmvserv/private/prod_cookie.txt'
         if options.mcm:
             sys.path.append('/afs/cern.ch/cms/PPD/PdmV/tools/McM/')
             from rest import restful
-            mcm = restful(dev=False, cookie='/afs/cern.ch/user/p/pdmvserv/private/prod-cookie.txt')
+            mcm = restful(dev=False, cookie=cookie_path)
             rs = mcm.getA('requests', query='status=submitted')
-            rids = map(lambda d : d['prepid'], rs)
+            rids = map(lambda d: d['prepid'], rs)
 
-            print "Got", len(rids), "to update from mcm"
-            #print len(docs),len(req_list)
-            #print map( lambda docid : any( map(lambda rid : rid in doc, rids)), docs)
-            docs = filter(lambda docid : any(map(lambda rid : rid in docid, rids)), docs)
-            if not len(docs):
-                req_list = filter(lambda req : any(map(lambda rid : rid in req["request_name"], rids)), req_list)
+            logger.info("Got %d to update from mcm" % (len(rids)))
+            # print len(docs),len(req_list)
+            # print map( lambda docid : any( map(lambda rid : rid in doc, rids)), docs)
+            docs = filter(lambda docid: any(map(lambda rid: rid in docid, rids)), docs)
+            if len(docs):
+                # req_list = filter(lambda req: any(map(lambda rid: rid in req["request_name"], rids)), req_list)
+                req_list = filter(lambda req: req['request_name'] in docs, req_list)
 
         if options.search:
             if options.force:
                 FORCE = True
-            docs = filter(lambda docid : options.search in docid, docs)
-            if not len(docs):
-                req_list = filter(lambda req : options.search in req["request_name"], req_list)
+            docs = filter(lambda docid: options.search in docid, docs)
+            if len(docs):
+                # req_list = filter(lambda req: options.search in req["request_name"], req_list)
+                req_list = filter(lambda req: req['request_name'] in docs, req_list)
                 if len(req_list):
                     pprint.pprint(req_list)
 
         if limit:
-            docs = docs[0:limit]
+            req_list = req_list[0:limit]
 
         request_dict = {}
         for request in req_list:
             if request['request_name'] in request_dict:
                 request_dict[request['request_name']].append(request)
+                logger.info('APPEND! %s' % (request['request_name']))
             else:
                 request_dict[request['request_name']] = [request]
-        repeated_request_dict = itertools.repeat(request_dict, len(docs))
 
-        print "Dispaching", len(docs), "requests to ", str(nproc), "processes..."
+        logger.info("Dispaching %d requests to %d processes..." % (len(request_dict), nproc))
         pool = multiprocessing.Pool(nproc)
-        results = pool.map(updateOneIt, itertools.izip(docs, repeated_request_dict))
+        results = pool.map(updateOneIt, request_dict.iteritems())
 
-        print "End dispatching!"
+        logger.info("End dispatching")
 
         if options.search:
             dump = dumpSome(docs, limit)
-            print "Result from update with search"
+            logger.info("Result from update with search")
             pprint.pprint(dump)
 
-        results = filter( lambda item : item != False, results)
-        print len(results), "updated"
-        print results
+        results = filter(lambda item: item is not False, results)
+        logger.info('%d updated' % (len(results)))
+        logger.info(str(results))
 
         print "\n\n"
         for r in results:
             try:
                 withRevisions = statsCouch.get_file_info_withrev(r)
-                ##we shouldnt trigger mcm for ReRecos or Relvals which doesnt exist there
+                # we shouldnt trigger mcm for ReRecos or Relvals which doesnt exist there
                 if any(el in withRevisions['pdmv_prep_id'].lower() for el in ['relval', 'rereco']):
-                    print "NOT bothering McM for rereco or relval"
+                    logger.info("NOT bothering McM for rereco or relval")
                     continue
-                ## notify McM for update !!
-                if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found','','None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
-                    print "Notifying McM for update"
-                    inspect = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
-                    ##TO-DO change for reqgmr2 migration
-                    #inspect = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
+                # notify McM for update !!
+                if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
+                    logger.info("Notifying McM for update")
+                    inspect = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % (cookie_path, withRevisions['pdmv_prep_id'])
+                    # TO-DO change for reqgmr2 migration
+                    # inspect = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
                     os.system(inspect)
-                ## he we should trigger McM update if request is in done.
-                ## because inspection on done doesn't exists.
+                # he we should trigger McM update if request is in done.
+                # because inspection on done doesn't exists.
                 if (withRevisions['pdmv_type'] != 'Resubmission' and
-                    withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found',
-                            '', 'None', '_'] and
+                    withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None', '_'] and
                     withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
                     ## we should trigger this only if events_in_das was updated for done
-                    update_comm = 'curl -s -k --cookie ~/private/prod-cookie.txt https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
+                    update_comm = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % (cookie_path, withRevisions['pdmv_prep_id'])
                     #update_comm = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
-                    print "Triggering McM completed_evts syncing for a done request %s" % (
-                            withRevisions['pdmv_prep_id'])
+                    logger.info("Triggering McM completed_evts syncing for a done request %s" % (withRevisions['pdmv_prep_id']))
 
                     os.system(update_comm)
             except:
                 print "failed to update growth for", r
                 print traceback.format_exc()
 
-
         print "\n\n"
-        ## set in the log file
-        #serves as forceupdated !
-        print "start time: ", start_time
-        print "logging updating time:", time.asctime()
-        l = open('stats.log','a')
-        l.write(time.asctime()+'\n')
-        l.close()
+        # set in the log file
+        # serves as forceupdated !
+        logger.info("start time: %s" % str(start_time))
+        logger.info("logging updating time: %s" % str(time.asctime()))
+        log_file = open('stats.log', 'a')
+        log_file.write(time.asctime() + '\n')
+        log_file.close()
+
 
 if __name__ == "__main__":
-    PROFILE=False
+    PROFILE = False
+    FORMAT = '[%(asctime)s][%(filename)s:%(lineno)d][%(levelname)s] %(message)s'
+    logging.basicConfig(stream=sys.stdout, format=FORMAT, level=logging.INFO)
+    global logger
+    logger = logging.getLogger()
     if PROFILE:
         import cProfile
         cProfile.run('main()')
