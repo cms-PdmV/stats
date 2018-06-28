@@ -1051,7 +1051,7 @@ def parallel_test(arguments, force=False):
     except:
         import traceback
         ##something failed lets produce traceback file for future investigations...
-        trf = 'traceback/traceback_%s.txt' % (req["request_name"])
+        trf = '/home/pdmvserv/stats/traceback/traceback_%s.txt' % (req["request_name"])
         print req["request_name"],"IS A DEAD FAILING REQUEST"
         print trf
         tr = open(trf, 'w')

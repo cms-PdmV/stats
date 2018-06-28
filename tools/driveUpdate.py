@@ -458,29 +458,26 @@ def main_do(options):
                 withRevisions = statsCouch.get_file_info_withrev(r)
                 # we shouldnt trigger mcm for ReRecos or Relvals which doesnt exist there
                 if any(el in withRevisions['pdmv_prep_id'].lower() for el in ['relval', 'rereco']):
-                    logger.info("NOT bothering McM for rereco or relval")
+                    logger.info("NOT bothering McM for rereco or relval: %s" % (withRevisions['pdmv_prep_id']))
                     continue
-                # notify McM for update !!
-                if (withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None']) and options.inspect and '_' not in withRevisions['pdmv_prep_id']:
-                    logger.info("Notifying McM for update")
-                    inspect = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/inspect/%s' % (cookie_path, withRevisions['pdmv_prep_id'])
-                    # TO-DO change for reqgmr2 migration
-                    # inspect = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/inspect/%s' % withRevisions['pdmv_prep_id']
-                    os.system(inspect)
+
                 # he we should trigger McM update if request is in done.
                 # because inspection on done doesn't exists.
                 if (withRevisions['pdmv_type'] != 'Resubmission' and
-                    withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None', '_'] and
-                    withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
-                    ## we should trigger this only if events_in_das was updated for done
-                    update_comm = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % (cookie_path, withRevisions['pdmv_prep_id'])
-                    #update_comm = 'curl -s -k --cookie ~/private/dev-cookie.txt https://cms-pdmv-dev.cern.ch/mcm/restapi/requests/update_stats/%s/no_refresh' % withRevisions['pdmv_prep_id']
-                    logger.info("Triggering McM completed_evts syncing for a done request %s" % (withRevisions['pdmv_prep_id']))
-
+                        withRevisions['pdmv_prep_id'].strip() not in ['No-Prepid-Found', '', 'None', '_'] and
+                        withRevisions['pdmv_status_from_reqmngr'] == "normal-archived"):
+                    # we should trigger this only if events_in_das was updated for done
+                    logger.info("Triggering McM completed_evts syncing for a done request %s" % (r))
+                    update_comm = 'curl -s -k -L --cookie %s https://cms-pdmv.cern.ch/mcm/restapi/requests/fetch_stats_by_wf/%s' % (cookie_path, r)
                     os.system(update_comm)
+                else:
+                    logger.info('%s type (%s) is either Resubmission OR prepid (%s) is bad OR it\'s not normal-archived (%s)' % (r,
+                                                                                                                                 withRevisions['pdmv_type'],
+                                                                                                                                 withRevisions['pdmv_prep_id'],
+                                                                                                                                 withRevisions['pdmv_status_from_reqmngr']))
             except:
-                print "failed to update growth for", r
-                print traceback.format_exc()
+                logger.error("failed to update growth for %s" % (r))
+                logger.error(str(traceback.format_exc()))
 
         print "\n\n"
         # set in the log file
