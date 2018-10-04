@@ -74,7 +74,7 @@ def worthTheUpdate(new, old):
             # addign a new parameter
             return True
 
-        if old['pdmv_dataset_statuses'] != new['pdmv_dataset_statuses']:
+        if old.get('pdmv_dataset_statuses') != new.get('pdmv_dataset_statuses'):
             return True
 
         # otherwise do not update, even with minor changes
@@ -112,6 +112,7 @@ def compare_dictionaries(dict1, dict2):
 
 
 def updateOne(docid, match_req_list):
+    global logger
     if "dmason" in docid:
         logger.info("Its a dmason request: %s" % (docid))
         return False

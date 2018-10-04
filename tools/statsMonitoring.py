@@ -244,6 +244,17 @@ def configsFromWorkload(workload):
                 break
             res.append(workload[t]['ConfigCacheID'])
             i += 1
+    elif workload['RequestType'] == 'StepChain':
+        i = 1
+        num_of_tasks = workload['StepChain']
+        while i <= num_of_tasks:
+            t = 'Step%s' % (i)
+            if t not in workload:
+                break
+            if not 'ConfigCacheID' in workload[t]:
+                break
+            res.append(workload[t]['ConfigCacheID'])
+            i += 1
 
     return res
 
