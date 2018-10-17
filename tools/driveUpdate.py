@@ -192,6 +192,9 @@ def updateOne(docid, match_req_list):
             if not compare_dictionaries(old_history, new_history):  # it is worth to fill history
                 updatedDoc['pdmv_monitor_history'].insert(0, rev)
 
+        while {} in updatedDoc['pdmv_monitor_history']:
+            updatedDoc['pdmv_monitor_history'].remove({})
+
         try:
             statsCouch.update_file(docid, json.dumps(updatedDoc))
             logger.info("Something has changed %s" % (docid))
