@@ -885,13 +885,13 @@ def parallel_test(arguments, force=False):
         if 'pdmv_dataset_list' in pdmv_request_dict and not pdmv_request_dict['pdmv_dataset_list']:
             makedsnquery = True
 
-        if force:
-            makedsnquery = True
-
         if req_status in priority_changable_stati:
             makedsnquery = False
 
         if req_status == "assigned":
+            makedsnquery = True
+
+        if force:
             makedsnquery = True
 
         if makedsnquery:
